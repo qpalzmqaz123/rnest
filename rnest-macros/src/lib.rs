@@ -48,3 +48,15 @@ pub fn controller(attr: TokenStream, item: TokenStream) -> TokenStream {
     let stream = Controller::parse(attr.into(), imp);
     stream.into()
 }
+
+#[proc_macro_attribute]
+pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr: proc_macro2::TokenStream = attr.into();
+    let item: proc_macro2::TokenStream = item.into();
+
+    (quote::quote! {
+        #[actix_web::main#attr]
+        #item
+    })
+    .into()
+}

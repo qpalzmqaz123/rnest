@@ -6,7 +6,7 @@ pub use actix_web::{
 };
 pub use rnest_di::{Di, ScopedDi};
 pub use rnest_error::{Error, Result};
-pub use rnest_macros::{controller, Module, Provider};
+pub use rnest_macros::{controller, main, Module, Provider};
 
 pub use module::{Controller, Module, Provider};
 
