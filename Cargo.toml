@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "rnest",
+    "rnest-di",
+    "rnest-error",
+    "rnest-macros",
+]
+default-members = [
+    "rnest",
+]
