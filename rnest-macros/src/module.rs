@@ -259,7 +259,7 @@ impl Module {
                 instance.__rnest_init();
 
                 // Save module
-                di.register_value(#module_name, Arc::new(RwLock::new(instance)));
+                di.register_value(#module_name, std::sync::Arc::new(tokio::sync::RwLock::new(instance)));
             }
         }
     }
@@ -277,8 +277,8 @@ impl Module {
             .collect();
 
         quote! {
-            fn scope(di: &mut rnest::Di) -> actix_web::Scope {
-                let scope = actix_web::web::scope("");
+            fn scope(di: &mut rnest::Di) -> rnest::actix_web::Scope {
+                let scope = rnest::actix_web::web::scope("");
 
                 #(#import_scope_calls)*
 

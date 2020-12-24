@@ -138,8 +138,8 @@ impl ControllerMethodInfo {
 
         quote! {
             async fn #cb_token(
-                __rnest_instance: actix_web::web::Data<std::sync::Arc<tokio::sync::RwLock<#struct_token>>>,
-                actix_web::web::Path((#(#router_param_name_tokens,)*)): actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
+                __rnest_instance: rnest::actix_web::web::Data<std::sync::Arc<tokio::sync::RwLock<#struct_token>>>,
+                rnest::actix_web::web::Path((#(#router_param_name_tokens,)*)): rnest::actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
                 #(#bodies,)*
                 #(#queries,)*
             ) -> #out_token {
@@ -255,9 +255,9 @@ impl Controller {
             .collect();
 
         quote! {
-            impl rnest::Controller<Self, Arc<RwLock<Self>>> for #struct_name_token {
-                fn scope(instance: Arc<RwLock<Self>>) -> actix_web::Scope {
-                    let scope = actix_web::web::scope(#scope_prefix).data(instance);
+            impl rnest::Controller<Self, std::sync::Arc<tokio::sync::RwLock<Self>>> for #struct_name_token {
+                fn scope(instance: std::sync::Arc<tokio::sync::RwLock<Self>>) -> rnest::actix_web::Scope {
+                    let scope = rnest::actix_web::web::scope(#scope_prefix).data(instance);
 
                     #(#scope_calls)*
 
@@ -279,7 +279,7 @@ impl Controller {
         quote! {
             let scope = scope.route(
                 format!("{}/", #url).as_str(),
-                actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
+                rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
             log::info!("{} {} '{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #url);
