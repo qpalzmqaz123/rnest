@@ -54,8 +54,10 @@ pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr: proc_macro2::TokenStream = attr.into();
     let item: proc_macro2::TokenStream = item.into();
 
+    // TODO: Use custom generator
     (quote::quote! {
-        #[actix_web::main#attr]
+        use rnest::actix_web;
+        #[rnest::actix_web::main#attr]
         #item
     })
     .into()

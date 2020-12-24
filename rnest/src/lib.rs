@@ -1,6 +1,7 @@
 mod module;
 
 pub use actix_web::{
+    self,
     web::{Json, Query},
     HttpResponse,
 };
