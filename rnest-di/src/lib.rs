@@ -4,6 +4,8 @@ use std::{any::Any, collections::HashMap};
 pub struct Di {
     factory_map: HashMap<String, Box<dyn Any>>,
     instance_map: HashMap<String, Box<dyn Any>>,
+    // FIXME: Temporarily use stack to detect circular dependencies
+    stack: Vec<String>,
 }
 
 unsafe impl Send for Di {}
@@ -13,6 +15,7 @@ impl Di {
         Self {
             factory_map: HashMap::new(),
             instance_map: HashMap::new(),
+            stack: Vec::new(),
         }
     }
 
@@ -45,6 +48,13 @@ impl Di {
         T: 'static + Clone,
     {
         let name: String = name.into();
+
+        self.stack.push(name.clone());
+
+        // Check circular dependencies
+        if (self.stack[0..self.stack.len() - 1]).contains(&name) {
+            return Err(Error::CircularDependencies { name });
+        }
 
         match self.instance_map.get(&name) {
             Some(instance) => {
@@ -148,6 +158,29 @@ impl<'a> ScopedDi<'a> {
     }
 
     pub fn inject<S, T>(&mut self, name: S) -> Result<T>
+    where
+        S: Into<String>,
+        T: 'static + Clone,
+    {
+        let name = name.into();
+
+        if self.di.stack.len() == 0 {
+            let res = self
+                .internal_inject(&name)
+                .map_err(|_| Error::ScopedInjectError {
+                    name,
+                    stack: self.di.stack.clone(),
+                });
+
+            self.di.stack.clear();
+
+            res
+        } else {
+            self.internal_inject(&name)
+        }
+    }
+
+    fn internal_inject<S, T>(&mut self, name: S) -> Result<T>
     where
         S: Into<String>,
         T: 'static + Clone,
