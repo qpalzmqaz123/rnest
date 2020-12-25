@@ -282,7 +282,7 @@ impl Module {
             .collect();
 
         quote! {
-            fn configure_actix_web(di: &mut rnest::Di, cfg: &mut actix_web::web::ServiceConfig) {
+            fn configure_actix_web(di: &mut rnest::Di, cfg: &mut rnest::actix_web::web::ServiceConfig) {
                 #(#import_actix_web_configure_calls)*
 
                 #(#controller_configure_actix_web_calls)*

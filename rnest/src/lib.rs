@@ -25,7 +25,7 @@ macro_rules! new {
         let di = std::sync::Arc::new(std::sync::Mutex::new(di));
         actix_web::HttpServer::new(move || {
             let app = actix_web::App::new()
-                // .wrap(actix_web::middleware::NormalizePath::default())
+                .wrap(actix_web::middleware::NormalizePath::default())
                 .configure(|cfg| {
                     <$main_module as rnest::Module>::configure_actix_web(
                         &mut di.clone().lock().expect("Lock di error"),

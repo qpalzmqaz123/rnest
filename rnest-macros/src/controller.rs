@@ -232,6 +232,7 @@ impl Controller {
     }
 
     fn parse_controller_impl(scope_prefix: &String, imp: &ItemImpl) -> TokenStream {
+        let scope_prefix = utils::normalize_url(scope_prefix);
         let struct_name_token = &imp.self_ty;
         let struct_name = quote! {#struct_name_token}.to_string();
 
@@ -251,12 +252,12 @@ impl Controller {
 
         let scope_calls: Vec<TokenStream> = method_infos
             .iter()
-            .map(|info| Self::parse_controller_impl_scope_call(scope_prefix, &struct_name, info))
+            .map(|info| Self::parse_controller_impl_scope_call(&scope_prefix, &struct_name, info))
             .collect();
 
         quote! {
             impl rnest::Controller<Self, std::sync::Arc<tokio::sync::RwLock<Self>>> for #struct_name_token {
-                fn configure_actix_web(instance: std::sync::Arc<tokio::sync::RwLock<Self>>, cfg: &mut actix_web::web::ServiceConfig) {
+                fn configure_actix_web(instance: std::sync::Arc<tokio::sync::RwLock<Self>>, cfg: &mut rnest::actix_web::web::ServiceConfig) {
                     let scope = rnest::actix_web::web::scope(#scope_prefix).data(instance);
 
                     #(#scope_calls)*
