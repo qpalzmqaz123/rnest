@@ -163,7 +163,7 @@ impl Module {
         let module_name = format_ident!("{}", self.name);
         let scoped_di_fn = self.gen_scoped_di();
         let import_fn = self.gen_import();
-        let scope_fn = self.gen_scope();
+        let configure_actix_web_fn = self.gen_configure_actix_web_fn();
 
         // TODO: Cleanup
         let on_module_init_expr = if let Some(func) = &self.on_module_init {
@@ -179,7 +179,7 @@ impl Module {
 
                 #import_fn
 
-                #scope_fn
+                #configure_actix_web_fn
             }
 
             impl #module_name {
@@ -269,40 +269,36 @@ impl Module {
         }
     }
 
-    fn gen_scope(&self) -> TokenStream {
-        let import_scope_calls: Vec<TokenStream> = self
+    fn gen_configure_actix_web_fn(&self) -> TokenStream {
+        let import_actix_web_configure_calls: Vec<TokenStream> = self
             .imports
             .iter()
-            .map(|(_, name)| Self::gen_import_scope_call(name))
+            .map(|(_, name)| Self::gen_import_actix_web_configure_call(name))
             .collect();
-        let controller_scope_calls: Vec<TokenStream> = self
+        let controller_configure_actix_web_calls: Vec<TokenStream> = self
             .controllers
             .iter()
-            .map(|(ty, name)| Self::gen_controller_scope_call(&self.name, name, ty))
+            .map(|(ty, name)| Self::gen_controller_configure_actix_web_call(&self.name, name, ty))
             .collect();
 
         quote! {
-            fn scope(di: &mut rnest::Di) -> rnest::actix_web::Scope {
-                let scope = rnest::actix_web::web::scope("");
+            fn configure_actix_web(di: &mut rnest::Di, cfg: &mut actix_web::web::ServiceConfig) {
+                #(#import_actix_web_configure_calls)*
 
-                #(#import_scope_calls)*
-
-                #(#controller_scope_calls)*
-
-                scope
+                #(#controller_configure_actix_web_calls)*
             }
         }
     }
 
-    fn gen_import_scope_call(module_name: &String) -> TokenStream {
+    fn gen_import_actix_web_configure_call(module_name: &String) -> TokenStream {
         let module_token = format_ident!("{}", module_name);
 
         quote! {
-            let scope = scope.service(<#module_token as rnest::Module>::scope(di));
+            <#module_token as rnest::Module>::configure_actix_web(di, cfg);
         }
     }
 
-    fn gen_controller_scope_call(
+    fn gen_controller_configure_actix_web_call(
         module_name: &String,
         controller_name: &String,
         ty: &String,
@@ -311,16 +307,15 @@ impl Module {
         let type_token: TokenStream = ty.parse().expect(&format!("Parse type '{}' error", ty));
 
         quote! {
-            let scope = scope.service(
-                <#controller_name_token as rnest::Controller<#controller_name_token, _>>::scope(
-                    <Self as rnest::Module>::scoped_di(di).inject::<_, #type_token>(#ty).expect(
-                        &format!(
-                            "Cannot inject controller '{}' from module '{}', please check if it is defined in provider",
-                            #ty,
-                            #module_name,
-                        )
+            <#controller_name_token as rnest::Controller<#controller_name_token, _>>::configure_actix_web(
+                <Self as rnest::Module>::scoped_di(di).inject::<_, #type_token>(#ty).expect(
+                    &format!(
+                        "Cannot inject controller '{}' from module '{}', please check if it is defined in provider",
+                        #ty,
+                        #module_name,
                     )
-                )
+                ),
+                cfg,
             );
         }
     }

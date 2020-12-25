@@ -3,7 +3,7 @@ use crate::{Di, Result, ScopedDi};
 pub trait Module {
     fn import(di: &mut Di);
     fn scoped_di(di: &mut Di) -> ScopedDi;
-    fn scope(di: &mut Di) -> actix_web::Scope;
+    fn configure_actix_web(di: &mut Di, cfg: &mut actix_web::web::ServiceConfig);
 }
 
 pub trait Provider<T> {
@@ -11,5 +11,5 @@ pub trait Provider<T> {
 }
 
 pub trait Controller<T, I: Clone>: Provider<T> {
-    fn scope(instance: I) -> actix_web::Scope;
+    fn configure_actix_web(instance: I, cfg: &mut actix_web::web::ServiceConfig);
 }

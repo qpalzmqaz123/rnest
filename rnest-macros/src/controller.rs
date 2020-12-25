@@ -251,23 +251,24 @@ impl Controller {
 
         let scope_calls: Vec<TokenStream> = method_infos
             .iter()
-            .map(|info| Self::parse_controller_impl_scope_call(&struct_name, info))
+            .map(|info| Self::parse_controller_impl_scope_call(scope_prefix, &struct_name, info))
             .collect();
 
         quote! {
             impl rnest::Controller<Self, std::sync::Arc<tokio::sync::RwLock<Self>>> for #struct_name_token {
-                fn scope(instance: std::sync::Arc<tokio::sync::RwLock<Self>>) -> rnest::actix_web::Scope {
+                fn configure_actix_web(instance: std::sync::Arc<tokio::sync::RwLock<Self>>, cfg: &mut actix_web::web::ServiceConfig) {
                     let scope = rnest::actix_web::web::scope(#scope_prefix).data(instance);
 
                     #(#scope_calls)*
 
-                    scope
+                    cfg.service(scope);
                 }
             }
         }
     }
 
     fn parse_controller_impl_scope_call(
+        scope_prefix: &String,
         struct_name: &String,
         info: &ControllerMethodInfo,
     ) -> TokenStream {
@@ -282,7 +283,7 @@ impl Controller {
                 rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
-            log::info!("{} {} '{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #url);
+            log::info!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
         }
     }
 
