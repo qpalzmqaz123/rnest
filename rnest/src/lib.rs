@@ -14,10 +14,12 @@ pub use module::{Controller, Module, Provider};
 #[macro_export]
 macro_rules! new {
     ($main_module:ident) => {{
+        log::trace!("Create di");
         let mut di = rnest::Di::new();
 
         // Import
         <$main_module as rnest::Module>::import(&mut di);
+        log::trace!("Di: {}", di);
 
         // Create http server
         let di = std::sync::Arc::new(std::sync::Mutex::new(di));

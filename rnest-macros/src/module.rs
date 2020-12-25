@@ -232,9 +232,13 @@ impl Module {
 
         quote! {
             fn import(di: &mut rnest::Di) {
-                if di.contains(#module_name) {
+                let module_name = #module_name;
+
+                if di.contains(module_name) {
                     return;
                 }
+
+                log::trace!("Import module: '{}'", module_name);
 
                 // Import submodule
                 #(<#import_module_ids as rnest::Module>::import(di);)*
@@ -256,6 +260,7 @@ impl Module {
                 let mut instance = Self {};
 
                 // Init module
+                log::trace!("Init module: '{}'", module_name);
                 instance.__rnest_init();
 
                 // Save module
@@ -331,6 +336,7 @@ impl Module {
         let provider_type_id: TokenStream = r#type.parse().unwrap();
 
         quote! {
+            log::trace!("Register provider factory to '{}', name: '{}', type: '{}', export: {}", module_name, #provider_type, stringify!(#provider_type_id), #export);
             scoped_di.register_factory(
                 #provider_type,
                 |scoped_di| {
@@ -355,6 +361,7 @@ impl Module {
         let provider_type_id: TokenStream = r#type.parse().unwrap();
 
         quote! {
+            log::trace!("Init provider in '{}', key: '{}', type: '{}'", module_name, stringify!(#provider_type_id), #provider_type);
             scoped_di.inject::<_, #provider_type_id>(#provider_type).expect(
                 &format!(
                     "Cannot inject '{}' from module '{}', please check if it is defined in provider or imported from submodule",
