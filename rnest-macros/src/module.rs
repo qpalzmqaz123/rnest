@@ -76,8 +76,8 @@ impl Module {
                                 );
                             }
                             _ => abort! { v,
-                                "Expect a cast expr";
-                                help = "Consider use '{} as Arc<{}>'", quote! {#v}, quote! {#v};
+                                "Expect a path str";
+                                help = "Consider use 'XXXController'";
                             },
                         }
                     }
