@@ -37,46 +37,47 @@ impl Module {
                 .as_str()
             {
                 "imports" => {
-                    let list: syn::ExprTuple = parse2! { attr.tokens,
+                    let tokens = attr.tokens;
+                    let tmp_stream = quote! { f #tokens };
+                    let list: syn::ExprCall = parse2! { tmp_stream,
                         "Syntax error on module imports";
-                        note = "Syntax is #[imports(MODULE_A as TYPE_A, MODULEB as TYPE_B,)]";
+                        note = "Syntax is #[imports(MODULE_A, MODULEB,)]";
                     };
-                    for v in list.elems {
+                    for v in list.args {
                         match v {
-                            syn::Expr::Cast(e) => {
-                                let module = e.expr;
-                                let module_type = e.ty;
-                                imports.insert(
-                                    quote! {#module_type}.to_string(),
-                                    quote! {#module}.to_string(),
-                                );
+                            syn::Expr::Path(p) => {
+                                let module = p.path.segments.last().unwrap();
+                                let module_str = quote! {#module}.to_string();
+                                imports
+                                    .insert(format!("std::sync::Arc<{}>", module_str), module_str);
                             }
                             _ => abort! { v,
-                                "Expect a cast expr";
-                                help = "Consider use '{} as Arc<RwLock<{}>>'", quote! {#v}, quote! {#v};
+                                "Expect a path str";
+                                help = "Consider use 'XXXModule'";
                             },
                         }
                     }
                 }
                 "controllers" => {
-                    // TODO: Optimize
-                    let list: syn::ExprTuple = parse2! { attr.tokens,
+                    let tokens = attr.tokens;
+                    let tmp_stream = quote! { f #tokens };
+                    let list: syn::ExprCall = parse2! { tmp_stream,
                         "Syntax error on module controllers";
-                        note = "Syntax is #[controllers(CONTROLLER_A as TYPE_A, CONTROLLERB as TYPE_B,)]";
+                        note = "Syntax is #[controllers(CONTROLLER_A, CONTROLLERB,)]";
                     };
-                    for v in list.elems {
+                    for v in list.args {
                         match v {
-                            syn::Expr::Cast(e) => {
-                                let controller = e.expr;
-                                let controller_type = e.ty;
+                            syn::Expr::Path(p) => {
+                                let controller = p.path.segments.last().unwrap();
+                                let controller_str = quote! {#controller}.to_string();
                                 controllers.insert(
-                                    quote! {#controller_type}.to_string(),
-                                    quote! {#controller}.to_string(),
+                                    format!("std::sync::Arc<{}>", controller_str),
+                                    controller_str,
                                 );
                             }
                             _ => abort! { v,
                                 "Expect a cast expr";
-                                help = "Consider use '{} as Arc<RwLock<{}>>'", quote! {#v}, quote! {#v};
+                                help = "Consider use '{} as Arc<{}>'", quote! {#v}, quote! {#v};
                             },
                         }
                     }
@@ -101,7 +102,7 @@ impl Module {
                             }
                             _ => abort! { v,
                                 "Expect a cast expr";
-                                help = "Consider use '{} as Arc<RwLock<{}>>'", quote! {#v}, quote! {#v};
+                                help = "Consider use '{} as Arc<{}Trait + Sync + Send>'", quote! {#v}, quote! {#v};
                             },
                         }
                     }
@@ -264,7 +265,7 @@ impl Module {
                 instance.__rnest_init();
 
                 // Save module
-                di.register_value(#module_name, std::sync::Arc::new(tokio::sync::RwLock::new(instance)));
+                di.register_value(#module_name, std::sync::Arc::new(instance));
             }
         }
     }
@@ -342,7 +343,7 @@ impl Module {
                     instance.__rnest_init();
 
                     // Create di instance
-                    let mut di_instance: #provider_type_id = Arc::new(RwLock::new(instance));
+                    let mut di_instance: #provider_type_id = std::sync::Arc::new(instance);
 
                     Ok(di_instance)
                 },

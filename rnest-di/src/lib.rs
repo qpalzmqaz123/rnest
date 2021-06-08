@@ -29,7 +29,11 @@ impl Di {
         S: Into<String>,
         T: 'static + Clone,
     {
-        self.instance_map.insert(name.into(), Box::new(value));
+        let name = name.into();
+
+        log::trace!("Register value: '{}'", name);
+
+        self.instance_map.insert(name, Box::new(value));
     }
 
     pub fn register_factory<S, F, T>(&mut self, name: S, factory: F)
@@ -38,8 +42,12 @@ impl Di {
         F: 'static + FnOnce(&mut Di) -> Result<T>,
         T: 'static + Clone,
     {
+        let name = name.into();
+
+        log::trace!("Register factory: '{}'", name);
+
         let factory: Box<dyn FnOnce(&mut Di) -> Result<T>> = Box::new(factory);
-        self.factory_map.insert(name.into(), Box::new(factory));
+        self.factory_map.insert(name, Box::new(factory));
     }
 
     pub fn inject<S, T>(&mut self, name: S) -> Result<T>
@@ -48,6 +56,8 @@ impl Di {
         T: 'static + Clone,
     {
         let name: String = name.into();
+
+        log::trace!("Try to inject: '{}'", name);
 
         self.stack.push(name.clone());
 

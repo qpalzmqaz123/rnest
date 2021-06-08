@@ -1,6 +1,4 @@
 use rnest::{controller, Module, Provider};
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 #[derive(Provider)]
 struct HelloController {}
@@ -14,9 +12,7 @@ impl HelloController {
 }
 
 #[derive(Module)]
-#[controllers(
-    HelloController as Arc<RwLock<HelloController>>,
-)]
+#[controllers(HelloController)]
 struct HelloModule {}
 
 #[rnest::main]

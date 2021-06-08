@@ -1227,6 +1227,7 @@ dependencies = [
 name = "rnest-di"
 version = "0.1.0"
 dependencies = [
+ "log",
  "rnest-error",
 ]
 

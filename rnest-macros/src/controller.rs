@@ -96,11 +96,11 @@ impl ControllerMethodInfo {
         } else {
             quote! {}
         };
-        let lock_method = if self.is_mut_self {
-            quote! {write}
-        } else {
-            quote! {read}
-        };
+        // let lock_method = if self.is_mut_self {
+        //     quote! {write}
+        // } else {
+        //     quote! {read}
+        // };
         let router_param_map = self.router_param_map();
         let url_args = utils::get_args_from_url(&self.url);
         let (router_param_name_tokens, router_param_type_tokens): (
@@ -138,12 +138,12 @@ impl ControllerMethodInfo {
 
         quote! {
             async fn #cb_token(
-                __rnest_instance: rnest::actix_web::web::Data<std::sync::Arc<tokio::sync::RwLock<#struct_token>>>,
+                __rnest_instance: rnest::actix_web::web::Data<std::sync::Arc<#struct_token>>,
                 rnest::actix_web::web::Path((#(#router_param_name_tokens,)*)): rnest::actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
                 #(#bodies,)*
                 #(#queries,)*
             ) -> #out_token {
-                __rnest_instance.#lock_method().await.#method_token(#(#method_args_from_cb,)*)#await_token
+                __rnest_instance.#method_token(#(#method_args_from_cb,)*)#await_token
             }
         }
     }
@@ -256,8 +256,8 @@ impl Controller {
             .collect();
 
         quote! {
-            impl rnest::Controller<Self, std::sync::Arc<tokio::sync::RwLock<Self>>> for #struct_name_token {
-                fn configure_actix_web(instance: std::sync::Arc<tokio::sync::RwLock<Self>>, cfg: &mut rnest::actix_web::web::ServiceConfig) {
+            impl rnest::Controller<Self, std::sync::Arc<Self>> for #struct_name_token {
+                fn configure_actix_web(instance: std::sync::Arc<Self>, cfg: &mut rnest::actix_web::web::ServiceConfig) {
                     let scope = rnest::actix_web::web::scope(#scope_prefix).data(instance);
 
                     #(#scope_calls)*
