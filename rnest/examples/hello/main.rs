@@ -1,4 +1,10 @@
-use rnest::{controller, Module, Provider};
+use rnest::{controller, Module, Provider, Query};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct QueryInfo {
+    msg: String,
+}
 
 #[derive(Provider)]
 struct HelloController {}
@@ -6,8 +12,8 @@ struct HelloController {}
 #[controller("/")]
 impl HelloController {
     #[get("/hello/{name}")]
-    fn hello(&self, #[param] name: String) -> String {
-        format!("Hello {}", name)
+    fn hello(&self, #[param] name: String, #[query] info: Query<QueryInfo>) -> String {
+        format!("Hello {}: {}", name, info.msg)
     }
 }
 
