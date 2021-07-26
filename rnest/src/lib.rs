@@ -14,6 +14,9 @@ pub use module::{Controller, Module, Provider};
 #[macro_export]
 macro_rules! new {
     ($main_module:ident) => {{
+        $crate::new!($main_module, app => { app })
+    }};
+    ($main_module:ident, $app:ident => $cb:block) => {{
         log::trace!("Create di");
         let mut di = rnest::Di::new();
 
@@ -24,17 +27,14 @@ macro_rules! new {
         // Create http server
         let di = std::sync::Arc::new(std::sync::Mutex::new(di));
         actix_web::HttpServer::new(move || {
-            let json_cfg = actix_web::web::JsonConfig::default().limit(100 * 1024 * 1024);
-
-            let app = actix_web::App::new()
-                .wrap(actix_web::middleware::NormalizePath::default())
-                .app_data(json_cfg)
-                .configure(|cfg| {
-                    <$main_module as rnest::Module>::configure_actix_web(
-                        &mut di.clone().lock().expect("Lock di error"),
-                        cfg,
-                    );
-                });
+            let app = actix_web::App::new();
+            let app = (|$app: rnest::actix_web::App<_, _>| $cb)(app);
+            let app = app.configure(|cfg| {
+                <$main_module as rnest::Module>::configure_actix_web(
+                    &mut di.clone().lock().expect("Lock di error"),
+                    cfg,
+                );
+            });
 
             app
         })
