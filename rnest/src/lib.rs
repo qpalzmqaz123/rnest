@@ -3,7 +3,7 @@ mod module;
 pub use actix_web::{
     self,
     web::{Json, Query},
-    HttpResponse,
+    HttpRequest, HttpResponse,
 };
 pub use rnest_di::{Di, ScopedDi};
 pub use rnest_error::{Error, Result};

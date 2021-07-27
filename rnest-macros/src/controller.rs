@@ -22,6 +22,10 @@ enum ControllerMethodArg {
         name: String,
         ty: String,
     },
+    Raw {
+        name: String,
+        ty: String,
+    },
 }
 
 #[derive(Debug)]
@@ -69,6 +73,12 @@ impl ControllerMethodInfo {
                     quote! {#name_token: #ty_token}
                 }
                 ControllerMethodArg::Query { name, ty } => {
+                    let name_token = format_ident!("{}", name);
+                    let ty_token: TokenStream = ty.parse().expect("Parse query type error");
+
+                    quote! {#name_token: #ty_token}
+                }
+                ControllerMethodArg::Raw { name, ty } => {
                     let name_token = format_ident!("{}", name);
                     let ty_token: TokenStream = ty.parse().expect("Parse query type error");
 
@@ -135,6 +145,15 @@ impl ControllerMethodInfo {
 
             v
         });
+        let raws: Vec<TokenStream> = self.args.iter().fold(vec![], |mut v, arg| {
+            if let ControllerMethodArg::Raw { name, ty } = arg {
+                let name_token = format_ident!("{}", name);
+                let type_token: TokenStream = ty.parse().expect("Parse query type error");
+                v.push(quote! {#name_token: #type_token});
+            }
+
+            v
+        });
 
         quote! {
             async fn #cb_token(
@@ -142,6 +161,7 @@ impl ControllerMethodInfo {
                 rnest::actix_web::web::Path((#(#router_param_name_tokens,)*)): rnest::actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
                 #(#bodies,)*
                 #(#queries,)*
+                #(#raws,)*
             ) -> #out_token {
                 __rnest_instance.#method_token(#(#method_args_from_cb,)*)#await_token
             }
@@ -176,6 +196,10 @@ impl ControllerMethodInfo {
                     quote! {#arg_token}
                 }
                 ControllerMethodArg::Query { name, .. } => {
+                    let arg_token = format_ident!("{}", name);
+                    quote! {#arg_token}
+                }
+                ControllerMethodArg::Raw { name, .. } => {
                     let arg_token = format_ident!("{}", name);
                     quote! {#arg_token}
                 }
@@ -436,6 +460,10 @@ impl Controller {
                 ty: quote! {#ty}.to_string(),
             },
             "query" => ControllerMethodArg::Query {
+                name: quote! {#pat}.to_string(),
+                ty: quote! {#ty}.to_string(),
+            },
+            "raw" => ControllerMethodArg::Raw {
                 name: quote! {#pat}.to_string(),
                 ty: quote! {#ty}.to_string(),
             },

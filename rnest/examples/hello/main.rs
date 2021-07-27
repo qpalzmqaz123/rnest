@@ -1,4 +1,4 @@
-use rnest::{controller, Module, Provider, Query};
+use rnest::{controller, HttpRequest, Module, Provider, Query};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -12,7 +12,14 @@ struct HelloController {}
 #[controller("/")]
 impl HelloController {
     #[get("/hello/{name}")]
-    fn hello(&self, #[param] name: String, #[query] info: Query<QueryInfo>) -> String {
+    fn hello(
+        &self,
+        #[param] name: String,
+        #[query] info: Query<QueryInfo>,
+        #[raw] req: HttpRequest,
+    ) -> String {
+        println!("req: {:?}", req);
+
         format!("Hello {}: {}", name, info.msg)
     }
 }
