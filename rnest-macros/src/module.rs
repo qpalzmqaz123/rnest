@@ -207,7 +207,7 @@ impl Module {
 
         quote! {
             impl #module_name {
-                pub fn __rnest_gen_openapi3_spec(cache: &mut std::collections::HashMap<String, rnest::serde_json::Value>) {
+                pub fn __rnest_gen_openapi3_spec(cache: &mut std::collections::HashMap<String, rnest::JsonValue>) {
                     let name = stringify!(#module_name).to_string();
 
                     // Check if spec already in cache
@@ -222,8 +222,8 @@ impl Module {
                     cache.insert(name, Self::__rnest_get_openapi3_spec_self());
                 }
 
-                fn __rnest_get_openapi3_spec_self() -> rnest::serde_json::Value {
-                    let mut paths = rnest::serde_json::json!({});
+                fn __rnest_get_openapi3_spec_self() -> rnest::JsonValue {
+                    let mut paths = rnest::json!({});
                     let mut obj = paths.as_object_mut().unwrap();
                     #(obj.extend(#controllers::__rnest_get_openapi3_spec().as_object().unwrap().clone());)*
 

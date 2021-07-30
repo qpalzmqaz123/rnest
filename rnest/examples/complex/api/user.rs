@@ -9,8 +9,8 @@ pub struct UserInfo {
 }
 
 impl OpenApiSchema for UserInfo {
-    fn get_schema() -> rnest::serde_json::Value {
-        rnest::serde_json::json!({
+    fn get_schema() -> rnest::JsonValue {
+        rnest::json!({
             "type": "object",
             "properties": {
                 "id": {

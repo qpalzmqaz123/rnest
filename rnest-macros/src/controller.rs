@@ -258,11 +258,11 @@ impl Controller {
 
         quote! {
             impl #name {
-                pub fn __rnest_get_openapi3_spec() -> rnest::serde_json::Value {
-                    let mut specs: Vec<(String, rnest::serde_json::Value)> = Vec::new();
+                pub fn __rnest_get_openapi3_spec() -> rnest::JsonValue {
+                    let mut specs: Vec<(String, rnest::JsonValue)> = Vec::new();
                     #(specs.push((#methods)());)*
 
-                    let mut spec_map: std::collections::HashMap<String, Vec<rnest::serde_json::Value>> = std::collections::HashMap::new();
+                    let mut spec_map: std::collections::HashMap<String, Vec<rnest::JsonValue>> = std::collections::HashMap::new();
                     for (url, body) in specs {
                         let mut bodies = match spec_map.remove(&url) {
                             Some(v) => v,
@@ -272,9 +272,9 @@ impl Controller {
                         spec_map.insert(url, bodies);
                     }
 
-                    let mut paths = rnest::serde_json::json!({});
+                    let mut paths = rnest::json!({});
                     for (url, bodies) in spec_map.into_iter() {
-                        let bodies = bodies.into_iter().fold(rnest::serde_json::json!({}), |mut v, i| {
+                        let bodies = bodies.into_iter().fold(rnest::json!({}), |mut v, i| {
                             v.as_object_mut().unwrap().extend(i.as_object().unwrap().clone());
                             v
                         });
@@ -294,10 +294,10 @@ impl Controller {
         if let Some(factory) = info.openapi_schema {
             let factory = format_ident!("{}", factory);
             quote! {
-                || -> (String, rnest::serde_json::Value) {
+                || -> (String, rnest::JsonValue) {
                     let url = #url.to_string();
                     let schema = Self::#factory();
-                    let body = rnest::serde_json::json!({
+                    let body = rnest::json!({
                         #method: schema
                     });
 
@@ -306,9 +306,9 @@ impl Controller {
             }
         } else {
             quote! {
-                || -> (String, rnest::serde_json::Value) {
+                || -> (String, rnest::JsonValue) {
                     let url = #url.to_string();
-                    (url, rnest::serde_json::json!({}))
+                    (url, rnest::json!({}))
                 }
             }
         }
@@ -331,9 +331,9 @@ impl Controller {
             .collect();
 
         quote! {
-            || -> (String, rnest::serde_json::Value) {
+            || -> (String, rnest::JsonValue) {
                 let url = #url.to_string();
-                let params = rnest::serde_json::json!([
+                let params = rnest::json!([
                     #({
                         "in": "path",
                         "name": #parameters,
@@ -343,7 +343,7 @@ impl Controller {
                         }
                     })*
                 ]);
-                let body = rnest::serde_json::json!({
+                let body = rnest::json!({
                     #method: {
                         "parameters": params,
                         "responses": {

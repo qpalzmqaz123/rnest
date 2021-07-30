@@ -15,8 +15,8 @@ impl UserController {
         HttpResponse::Ok().json(self.user.get_list().await)
     }
 
-    fn get_list_schema() -> rnest::serde_json::Value {
-        rnest::serde_json::json!({
+    fn get_list_schema() -> rnest::JsonValue {
+        rnest::json!({
             "security": [
                 {
                     "bearerAuth": []
