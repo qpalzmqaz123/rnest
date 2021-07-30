@@ -37,6 +37,7 @@ struct ControllerMethodInfo {
     output_type: String,
     method: String, // TODO: Use enum in the future, currently it is one of ['get', 'post', 'delete', 'put']
     url: String,
+    openapi_schema: Option<String>,
 }
 
 impl ControllerMethodInfo {
@@ -230,6 +231,135 @@ impl Controller {
         }
     }
 
+    pub fn gen_openapi3(attr: TokenStream, imp: ItemImpl) -> TokenStream {
+        // TODO: Optimize
+        let scope_prefix = match utils::parse_string_token(&attr) {
+            Ok(s) => s,
+            Err(_) => abort! { attr,
+                "Syntax error on controller";
+                note = "Syntax is #[controller(\"/api\")]";
+            },
+        };
+
+        let name = imp.self_ty;
+        // TODO: optimize
+        let mut methods: Vec<TokenStream> = Vec::new();
+        for item in &imp.items {
+            match item {
+                ImplItem::Method(method) => {
+                    if method.attrs.len() > 0 {
+                        let info = Self::parse_controller_method_info(method);
+                        methods.push(Self::gen_openapi3_with_method(scope_prefix.as_str(), info));
+                    }
+                }
+                _ => continue,
+            }
+        }
+
+        quote! {
+            impl #name {
+                pub fn __rnest_get_openapi3_spec() -> rnest::serde_json::Value {
+                    let mut specs: Vec<(String, rnest::serde_json::Value)> = Vec::new();
+                    #(specs.push((#methods)());)*
+
+                    let mut spec_map: std::collections::HashMap<String, Vec<rnest::serde_json::Value>> = std::collections::HashMap::new();
+                    for (url, body) in specs {
+                        let mut bodies = match spec_map.remove(&url) {
+                            Some(v) => v,
+                            None => Vec::new(),
+                        };
+                        bodies.push(body);
+                        spec_map.insert(url, bodies);
+                    }
+
+                    let mut paths = rnest::serde_json::json!({});
+                    for (url, bodies) in spec_map.into_iter() {
+                        let bodies = bodies.into_iter().fold(rnest::serde_json::json!({}), |mut v, i| {
+                            v.as_object_mut().unwrap().extend(i.as_object().unwrap().clone());
+                            v
+                        });
+                        paths.as_object_mut().unwrap().insert(url, bodies);
+                    }
+
+                    paths
+                }
+            }
+        }
+    }
+
+    fn gen_openapi3_with_method(scope: &str, info: ControllerMethodInfo) -> TokenStream {
+        let url = utils::normalize_url(format!("{}/{}", scope, info.url));
+        let method = &info.method;
+
+        if let Some(factory) = info.openapi_schema {
+            let factory = format_ident!("{}", factory);
+            quote! {
+                || -> (String, rnest::serde_json::Value) {
+                    let url = #url.to_string();
+                    let schema = Self::#factory();
+                    let body = rnest::serde_json::json!({
+                        #method: schema
+                    });
+
+                    (url, body)
+                }
+            }
+        } else {
+            quote! {
+                || -> (String, rnest::serde_json::Value) {
+                    let url = #url.to_string();
+                    (url, rnest::serde_json::json!({}))
+                }
+            }
+        }
+
+        /*
+        let url = &info.url;
+        let method = &info.method;
+        let parameters: Vec<String> = info
+            .args
+            .iter()
+            .map(|v| {
+                if let ControllerMethodArg::Param { name, ty } = v {
+                    Some((name.clone(), ty.clone()))
+                } else {
+                    None
+                }
+            })
+            .filter(|v| v.is_some())
+            .map(|v| v.unwrap().0)
+            .collect();
+
+        quote! {
+            || -> (String, rnest::serde_json::Value) {
+                let url = #url.to_string();
+                let params = rnest::serde_json::json!([
+                    #({
+                        "in": "path",
+                        "name": #parameters,
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    })*
+                ]);
+                let body = rnest::serde_json::json!({
+                    #method: {
+                        "parameters": params,
+                        "responses": {
+                            "200": {
+                                "description": "ok"
+                            }
+                        }
+                    }
+                });
+
+                (url, body)
+            }
+        }
+        */
+    }
+
     fn parse_self_impl(imp: &ItemImpl) -> TokenStream {
         let struct_name_token = &imp.self_ty;
         let methods: Vec<&ImplItemMethod> = imp
@@ -308,7 +438,7 @@ impl Controller {
                 rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
-            log::info!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
+            log::debug!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
         }
     }
 
@@ -338,6 +468,7 @@ impl Controller {
         // Parse attrs
         let mut http_method: Option<String> = None;
         let mut url: Option<String> = None;
+        let mut openapi_schema: Option<String> = None;
         for attr in &method.attrs {
             let http_method_attr = attr
                 .path
@@ -354,6 +485,15 @@ impl Controller {
                         Err(_) => abort! { attr.tokens,
                             "Syntax error on controller method";
                             note = "Syntax is #[{}(\"url\")]", http_method_attr;
+                        },
+                    });
+                }
+                "openapi_schema" => {
+                    openapi_schema = Some(match utils::parse_ident_arg(&attr.tokens) {
+                        Ok(s) => s,
+                        Err(_) => abort! { attr.tokens,
+                            "Syntax error on controller method";
+                            note = "Syntax is #[{}(factory)]", http_method_attr;
                         },
                     });
                 }
@@ -426,6 +566,7 @@ impl Controller {
             output_type,
             method: http_method.expect("Method is empty"),
             url: url.expect("Url is empty"),
+            openapi_schema,
         }
     }
 

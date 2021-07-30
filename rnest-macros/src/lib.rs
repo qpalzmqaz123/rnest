@@ -10,6 +10,7 @@ use module::Module;
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use provider::Provider;
+use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Item};
 
 #[proc_macro_derive(
@@ -21,8 +22,13 @@ pub fn derive_module(item: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(item);
     let module = Module::parse(input);
     let gen = module.gen();
+    let openapi = module.gen_openapi3();
 
-    gen.into()
+    (quote! {
+        #gen
+        #openapi
+    })
+    .into()
 }
 
 #[proc_macro_derive(Provider, attributes(default, on_module_init))]
@@ -45,8 +51,14 @@ pub fn controller(attr: TokenStream, item: TokenStream) -> TokenStream {
         },
     };
 
-    let stream = Controller::parse(attr.into(), imp);
-    stream.into()
+    let stream = Controller::parse(attr.clone().into(), imp.clone());
+    let openapi = Controller::gen_openapi3(attr.into(), imp);
+
+    (quote! {
+        #stream
+        #openapi
+    })
+    .into()
 }
 
 #[proc_macro_attribute]

@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
 use std::collections::HashMap;
@@ -187,6 +187,47 @@ impl Module {
                 fn __rnest_init(&mut self) {
                     #on_module_init_expr
                     log::info!("{} initialized", stringify!(#module_name));
+                }
+            }
+        }
+    }
+
+    pub fn gen_openapi3(&self) -> TokenStream {
+        let module_name = format_ident!("{}", self.name);
+        let controllers: Vec<Ident> = self
+            .controllers
+            .values()
+            .map(|ctrl| format_ident!("{}", ctrl))
+            .collect();
+        let imports: Vec<Ident> = self
+            .imports
+            .iter()
+            .map(|m| format_ident!("{}", m.1))
+            .collect();
+
+        quote! {
+            impl #module_name {
+                pub fn __rnest_gen_openapi3_spec(cache: &mut std::collections::HashMap<String, rnest::serde_json::Value>) {
+                    let name = stringify!(#module_name).to_string();
+
+                    // Check if spec already in cache
+                    if cache.contains_key(&name) {
+                        return;
+                    }
+
+                    // Generate from imports
+                    #(#imports::__rnest_gen_openapi3_spec(cache);)*
+
+                    // Generate self
+                    cache.insert(name, Self::__rnest_get_openapi3_spec_self());
+                }
+
+                fn __rnest_get_openapi3_spec_self() -> rnest::serde_json::Value {
+                    let mut paths = rnest::serde_json::json!({});
+                    let mut obj = paths.as_object_mut().unwrap();
+                    #(obj.extend(#controllers::__rnest_get_openapi3_spec().as_object().unwrap().clone());)*
+
+                    paths
                 }
             }
         }

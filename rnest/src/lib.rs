@@ -1,15 +1,17 @@
 mod module;
+mod openapi;
 
 pub use actix_web::{
     self,
     web::{Json, Query},
     HttpRequest, HttpResponse,
 };
+pub use module::{Controller, Module, Provider};
+pub use openapi::{OpenApiBuilder, OpenApiSchema};
 pub use rnest_di::{Di, ScopedDi};
 pub use rnest_error::{Error, Result};
 pub use rnest_macros::{controller, main, Module, Provider};
-
-pub use module::{Controller, Module, Provider};
+pub use serde_json;
 
 #[macro_export]
 macro_rules! new {
@@ -38,5 +40,23 @@ macro_rules! new {
 
             app
         })
+    }};
+}
+
+#[macro_export]
+macro_rules! openapi_builder {
+    ($main_module:ident) => {{
+        let mut cache: std::collections::HashMap<String, rnest::serde_json::Value> =
+            std::collections::HashMap::new();
+        $main_module::__rnest_gen_openapi3_spec(&mut cache);
+        let paths = cache
+            .into_iter()
+            .fold(rnest::serde_json::json!({}), |mut obj, (_, v)| {
+                obj.as_object_mut()
+                    .unwrap()
+                    .extend(v.as_object().unwrap().clone());
+                obj
+            });
+        $crate::OpenApiBuilder::new(paths)
     }};
 }

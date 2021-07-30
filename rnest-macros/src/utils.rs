@@ -22,6 +22,25 @@ pub fn parse_string_arg(item: &TokenStream) -> Result<String, String> {
     Ok(s)
 }
 
+/// Parse token stream like (foo)
+pub fn parse_ident_arg(item: &TokenStream) -> Result<String, String> {
+    let s = (move || -> Result<String, ()> {
+        let expr = syn::parse2::<syn::ExprParen>(item.clone()).map_err(|_| ())?;
+        let path = match *expr.expr {
+            Expr::Path(path) => path,
+            _ => return Err(()),
+        };
+        if let Some(last) = path.path.segments.last() {
+            Ok(last.ident.to_string())
+        } else {
+            Err(())
+        }
+    })()
+    .map_err(|_| format!("Parse token error, expect (\\w*)"))?;
+
+    Ok(s)
+}
+
 /// Parse token stream like "foo"
 pub fn parse_string_token(item: &TokenStream) -> Result<String, String> {
     let s = (move || -> Result<String, ()> {
