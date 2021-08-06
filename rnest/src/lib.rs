@@ -28,8 +28,8 @@ macro_rules! new {
 
         // Create http server
         let di = std::sync::Arc::new(std::sync::Mutex::new(di));
-        actix_web::HttpServer::new(move || {
-            let app = actix_web::App::new();
+        rnest::actix_web::HttpServer::new(move || {
+            let app = rnest::actix_web::App::new();
             let app = (|$app: rnest::actix_web::App<_, _>| $cb)(app);
             let app = app.configure(|cfg| {
                 <$main_module as rnest::Module>::configure_actix_web(
