@@ -11,7 +11,7 @@ struct HelloController {}
 
 #[controller("/")]
 impl HelloController {
-    #[get("/hello/{name}")]
+    #[get("/hello/{name:.*}")]
     fn hello(
         &self,
         #[param] name: String,

@@ -72,12 +72,15 @@ pub fn normalize_url<S: AsRef<str>>(url: S) -> String {
     s
 }
 
-/// Get vec[a, b] from url "/api/{a}/{b}"
+/// Get vec[a, b] from url "/api/{a:.*}/{b}"
 pub fn get_args_from_url<S: AsRef<str>>(url: S) -> Vec<String> {
     let url = url.as_ref();
-    let re = Regex::new(r"\{(\w+)\}").unwrap();
+    let re = Regex::new(r"\{\w+(:.*?)?\}").unwrap();
     re.find_iter(url)
-        .map(|m| (&url[(m.start() + 1)..(m.end() - 1)]).to_string())
+        .map(|m| {
+            let s = (&url[(m.start() + 1)..(m.end() - 1)]).to_string();
+            s.split(":").next().unwrap().to_string()
+        })
         .collect()
 }
 
