@@ -378,7 +378,7 @@ impl Module {
         let provider_type_id: TokenStream = r#type.parse().unwrap();
 
         quote! {
-            log::trace!("Register provider factory to '{}', name: '{}', type: '{}', export: {}", module_name, #provider_type, stringify!(#provider_type_id), #export);
+            log::trace!("Register provider factory to '{}', name: '{}', type: '{}', export: {}", module_name, stringify!(#provider_id), stringify!(#provider_type_id), #export);
             scoped_di.register_factory(
                 #provider_type,
                 |scoped_di| {
