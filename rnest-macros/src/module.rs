@@ -1,7 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
-use std::collections::HashMap;
 use syn::DeriveInput;
 
 #[derive(Debug)]
@@ -12,18 +11,18 @@ struct Provider {
 
 #[derive(Debug)]
 pub struct Module {
-    name: String,                         // Module name
-    imports: HashMap<String, String>,     // HashMap<Type, StructName>
-    controllers: HashMap<String, String>, // HashMap<Type, StructName>
-    providers: HashMap<String, Provider>,
+    name: String,                       // Module name
+    imports: Vec<(String, String)>,     // Vec<(Type, StructName)>
+    controllers: Vec<(String, String)>, // Vec<(Type, StructName)>
+    providers: Vec<(String, Provider)>,
     on_module_init: Option<String>,
 }
 
 impl Module {
     pub fn parse(item: DeriveInput) -> Self {
-        let mut imports: HashMap<String, String> = HashMap::new();
-        let mut controllers: HashMap<String, String> = HashMap::new();
-        let mut providers: HashMap<String, Provider> = HashMap::new();
+        let mut imports: Vec<(String, String)> = Vec::new();
+        let mut controllers: Vec<(String, String)> = Vec::new();
+        let mut providers: Vec<(String, Provider)> = Vec::new();
         let mut on_module_init: Option<String> = None;
 
         for attr in item.attrs {
@@ -49,7 +48,7 @@ impl Module {
                                 let module = p.path.segments.last().unwrap();
                                 let module_str = quote! {#module}.to_string();
                                 imports
-                                    .insert(format!("std::sync::Arc<{}>", module_str), module_str);
+                                    .push((format!("std::sync::Arc<{}>", module_str), module_str));
                             }
                             _ => abort! { v,
                                 "Expect a path str";
@@ -70,10 +69,10 @@ impl Module {
                             syn::Expr::Path(p) => {
                                 let controller = p.path.segments.last().unwrap();
                                 let controller_str = quote! {#controller}.to_string();
-                                controllers.insert(
+                                controllers.push((
                                     format!("std::sync::Arc<{}>", controller_str),
                                     controller_str,
-                                );
+                                ));
                             }
                             _ => abort! { v,
                                 "Expect a path str";
@@ -92,13 +91,13 @@ impl Module {
                             syn::Expr::Cast(e) => {
                                 let provider = e.expr;
                                 let provider_type = e.ty;
-                                providers.insert(
+                                providers.push((
                                     quote! {#provider_type}.to_string(),
                                     Provider {
                                         r#struct: quote! {#provider}.to_string(),
                                         export: false,
                                     },
-                                );
+                                ));
                             }
                             _ => abort! { v,
                                 "Expect a cast expr";
@@ -114,8 +113,10 @@ impl Module {
                     };
                     for v in list.elems {
                         let key = quote! {#v}.to_string();
-                        match providers.get_mut(&key) {
-                            Some(p) => p.export = true,
+                        // TODO: Optimize
+                        let prod = providers.iter_mut().find(|(name, _)| name == &key);
+                        match prod {
+                            Some((_, p)) => p.export = true,
                             None => abort! { v,
                                 "The exported type '{}' cannot be found in the providers", &key
                             },
@@ -196,8 +197,8 @@ impl Module {
         let module_name = format_ident!("{}", self.name);
         let controllers: Vec<Ident> = self
             .controllers
-            .values()
-            .map(|ctrl| format_ident!("{}", ctrl))
+            .iter()
+            .map(|(_, ctrl)| format_ident!("{}", ctrl))
             .collect();
         let imports: Vec<Ident> = self
             .imports
@@ -235,7 +236,11 @@ impl Module {
 
     fn gen_scoped_di(&self) -> TokenStream {
         let module_name = &self.name;
-        let import_modules = self.imports.values().collect::<Vec<&String>>();
+        let import_modules = self
+            .imports
+            .iter()
+            .map(|(_, v)| v)
+            .collect::<Vec<&String>>();
 
         quote! {
             fn scoped_di(di: &mut rnest::Di) -> rnest::ScopedDi {
@@ -248,8 +253,8 @@ impl Module {
         let module_name = &self.name;
         let import_module_ids = self
             .imports
-            .values()
-            .map(|m| format_ident!("{}", m))
+            .iter()
+            .map(|(_, m)| format_ident!("{}", m))
             .collect::<Vec<proc_macro2::Ident>>();
         let provider_factories: Vec<TokenStream> = self
             .providers
