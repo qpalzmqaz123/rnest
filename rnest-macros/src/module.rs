@@ -101,7 +101,7 @@ impl Module {
                             }
                             _ => abort! { v,
                                 "Expect a cast expr";
-                                help = "Consider use '{} as Arc<{}Trait + Sync + Send>'", quote! {#v}, quote! {#v};
+                                help = "Consider use '{} as Arc<{}Trait>'", quote! {#v}, quote! {#v};
                             },
                         }
                     }

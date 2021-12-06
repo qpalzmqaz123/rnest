@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[derive(Provider)]
 pub struct UserController {
-    user: Arc<dyn User + Sync + Send>,
+    user: Arc<dyn User>,
 }
 
 #[controller("/user")]

@@ -9,10 +9,10 @@ use store::UserStore;
 
 #[derive(Module)]
 #[providers(
-    UserService as Arc<dyn User + Sync + Send>,
+    UserService as Arc<dyn User>,
     UserStore as Arc<UserStore>,
 )]
 #[exports(
-    Arc<dyn User + Sync + Send>,
+    Arc<dyn User>,
 )]
 pub struct UserModule {}
