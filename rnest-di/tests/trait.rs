@@ -1,8 +1,8 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rnest_di::Di;
 
-trait Human {
+trait Human: Send + Sync {
     fn speak(&self) -> String;
 }
 
@@ -22,13 +22,16 @@ impl Human for Person {
     }
 }
 
-#[test]
-fn test_trait() {
-    let mut di = Di::new();
+#[tokio::test]
+async fn test_trait() {
+    let di = Di::new();
 
-    di.register_factory("bob", |_| Ok(Rc::new(Person::new("bob")) as Rc<dyn Human>));
+    di.register_factory("bob", |_| async {
+        Ok(Arc::new(Person::new("bob")) as Arc<dyn Human>)
+    })
+    .unwrap();
 
-    let person: Rc<dyn Human> = di.inject("bob").unwrap();
+    let person: Arc<dyn Human> = di.inject("bob").await.unwrap();
 
     assert_eq!(person.speak(), "My name is bob");
 }

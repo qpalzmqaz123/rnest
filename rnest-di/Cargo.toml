@@ -8,4 +8,9 @@ edition = "2018"
 
 [dependencies]
 rnest-error = { path = "../rnest-error" }
-log = "0.4.11"
+
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+log = { version = "0.4", default-features = false }
+
+[dev-dependencies]
+tokio = { version = "0.2", default-features = false, features = ["macros", "rt-threaded"] }
