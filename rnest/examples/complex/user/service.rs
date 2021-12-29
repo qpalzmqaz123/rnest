@@ -10,8 +10,10 @@ pub struct UserService {
 }
 
 impl UserService {
-    fn init(&self) {
+    async fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
         log::info!("init");
+
+        Ok(())
     }
 }
 

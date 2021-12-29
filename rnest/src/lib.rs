@@ -8,7 +8,7 @@ pub use actix_web::{
 };
 pub use module::{Controller, Module, Provider};
 pub use openapi::{OpenApiBuilder, OpenApiSchema};
-pub use rnest_di::{Di, ScopedDi};
+pub use rnest_di::{Di, ScopedDi, ScopedDiGuard};
 pub use rnest_error::{Error, Result};
 pub use rnest_macros::{controller, main, Module, Provider};
 pub use serde_json::{json, Value as JsonValue};
@@ -23,7 +23,10 @@ macro_rules! new {
         let mut di = rnest::Di::new();
 
         // Import
-        <$main_module as rnest::Module>::import(&mut di);
+        if let Err(e) = <$main_module as rnest::Module>::import(&mut di).await {
+            panic!(format!("Init error: {}", e));
+        }
+
         log::trace!("Di: {}", di);
 
         // Create http server
@@ -32,10 +35,12 @@ macro_rules! new {
             let app = rnest::actix_web::App::new();
             let app = (|$app: rnest::actix_web::App<_, _>| $cb)(app);
             let app = app.configure(|cfg| {
-                <$main_module as rnest::Module>::configure_actix_web(
+                if let Err(e) = <$main_module as rnest::Module>::configure_actix_web(
                     &mut di.clone().lock().expect("Lock di error"),
                     cfg,
-                );
+                ) {
+                    panic!("configure_actix_web error: {}", e);
+                }
             });
 
             app

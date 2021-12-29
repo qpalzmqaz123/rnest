@@ -1,13 +1,15 @@
-use crate::{Di, Result, ScopedDi};
+use crate::{Di, Result, ScopedDi, ScopedDiGuard};
 
+#[async_trait::async_trait]
 pub trait Module {
-    fn import(di: &mut Di);
+    async fn import(di: &mut Di) -> Result<()>;
     fn scoped_di(di: &mut Di) -> ScopedDi;
-    fn configure_actix_web(di: &mut Di, cfg: &mut actix_web::web::ServiceConfig);
+    fn configure_actix_web(di: &mut Di, cfg: &mut actix_web::web::ServiceConfig) -> Result<()>;
 }
 
+#[async_trait::async_trait]
 pub trait Provider<T> {
-    fn register(scoped_di: &mut ScopedDi) -> Result<T>;
+    async fn register(scoped_di: ScopedDiGuard) -> Result<T>;
 }
 
 pub trait Controller<T, I: Clone>: Provider<T> {

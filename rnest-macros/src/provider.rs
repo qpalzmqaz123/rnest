@@ -46,14 +46,19 @@ impl Provider {
             .collect();
         let on_module_init_expr = if let Some(func) = &self.on_module_init {
             let func = format_ident!("{}", func);
-            quote! {self.#func();}
+            quote! {
+                self.#func()
+                    .await
+                    .map_err(|e| rnest::Error::User(format!("Init provider '{}' error: {}", std::any::type_name::<Self>(), e)))?;
+            }
         } else {
             quote! {}
         };
 
         quote! {
+            #[async_trait::async_trait]
             impl rnest::Provider<Self> for #provider_name_id {
-                fn register(scoped_di: &mut rnest::ScopedDi) -> rnest::Result<Self> {
+                async fn register(scoped_di: rnest::ScopedDiGuard) -> rnest::Result<Self> {
                     Ok(Self {
                         #(#fields,)*
                     })
@@ -62,9 +67,11 @@ impl Provider {
 
             // TODO: Use trait
             impl #provider_name_id {
-                pub fn __rnest_init(&mut self) {
+                pub async fn __rnest_init(&mut self) -> rnest::Result<()> {
                     #on_module_init_expr
                     log::info!("{} initialized", stringify!(#provider_name_id));
+
+                    Ok(())
                 }
             }
         }
@@ -144,7 +151,7 @@ impl Provider {
             }
         } else {
             quote! {
-                #name_id: scoped_di.inject(#field_type)?
+                #name_id: scoped_di.inject(#field_type).await?
             }
         }
     }

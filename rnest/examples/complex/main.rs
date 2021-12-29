@@ -27,13 +27,15 @@ impl SpecController {
             .body(self.spec.clone())
     }
 
-    fn init(&mut self) {
+    async fn init(&mut self) -> Result<(), String> {
         self.spec = rnest::openapi_builder!(MainModule)
             .version("1.0.0")
             .title("Example")
             .add_bearer_auth("bearerAuth")
             .build()
             .to_string();
+
+        Ok(())
     }
 }
 

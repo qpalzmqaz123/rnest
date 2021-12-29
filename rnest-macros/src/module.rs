@@ -170,12 +170,17 @@ impl Module {
         // TODO: Cleanup
         let on_module_init_expr = if let Some(func) = &self.on_module_init {
             let func = format_ident!("{}", func);
-            quote! {self.#func();}
+            quote! {
+                self.#func()
+                    .await
+                    .map_err(|e| rnest::Error::User(format!("Init module '{}' error: {}", std::any::type_name::<Self>(), e)))?;
+            }
         } else {
             quote! {}
         };
 
         quote! {
+            #[async_trait::async_trait]
             impl rnest::Module for #module_name {
                 #scoped_di_fn
 
@@ -185,9 +190,11 @@ impl Module {
             }
 
             impl #module_name {
-                fn __rnest_init(&mut self) {
+                async fn __rnest_init(&mut self) -> rnest::Result<()> {
                     #on_module_init_expr
                     log::info!("{} initialized", stringify!(#module_name));
+
+                    Ok(())
                 }
             }
         }
@@ -278,17 +285,17 @@ impl Module {
             .collect();
 
         quote! {
-            fn import(di: &mut rnest::Di) {
+            async fn import(di: &mut rnest::Di) -> rnest::Result<()> {
                 let module_name = #module_name;
 
-                if di.contains(module_name) {
-                    return;
+                if di.contains(module_name)? {
+                    return Ok(());
                 }
 
                 log::trace!("Import module: '{}'", module_name);
 
                 // Import submodule
-                #(<#import_module_ids as rnest::Module>::import(di);)*
+                #(<#import_module_ids as rnest::Module>::import(di).await?;)*
 
                 // Register providers
                 let mut scoped_di = Self::scoped_di(di);
@@ -308,10 +315,12 @@ impl Module {
 
                 // Init module
                 log::trace!("Init module: '{}'", module_name);
-                instance.__rnest_init();
+                instance.__rnest_init().await?;
 
                 // Save module
-                di.register_value(#module_name, std::sync::Arc::new(instance));
+                di.register_value(#module_name, std::sync::Arc::new(instance))?;
+
+                Ok(())
             }
         }
     }
@@ -329,10 +338,12 @@ impl Module {
             .collect();
 
         quote! {
-            fn configure_actix_web(di: &mut rnest::Di, cfg: &mut rnest::actix_web::web::ServiceConfig) {
+            fn configure_actix_web(di: &mut rnest::Di, cfg: &mut rnest::actix_web::web::ServiceConfig) -> rnest::Result<()> {
                 #(#import_actix_web_configure_calls)*
 
                 #(#controller_configure_actix_web_calls)*
+
+                Ok(())
             }
         }
     }
@@ -341,12 +352,12 @@ impl Module {
         let module_token = format_ident!("{}", module_name);
 
         quote! {
-            <#module_token as rnest::Module>::configure_actix_web(di, cfg);
+            <#module_token as rnest::Module>::configure_actix_web(di, cfg)?;
         }
     }
 
     fn gen_controller_configure_actix_web_call(
-        module_name: &String,
+        _module_name: &String,
         controller_name: &String,
         ty: &String,
     ) -> TokenStream {
@@ -355,13 +366,8 @@ impl Module {
 
         quote! {
             <#controller_name_token as rnest::Controller<#controller_name_token, _>>::configure_actix_web(
-                <Self as rnest::Module>::scoped_di(di).inject::<_, #type_token>(#ty).expect(
-                    &format!(
-                        "Cannot inject controller '{}' from module '{}', please check if it is defined in provider",
-                        #ty,
-                        #module_name,
-                    )
-                ),
+                // Direct inject value use sync code
+                <Self as rnest::Module>::scoped_di(di).inject_value::<#type_token>(#ty)?,
                 cfg,
             );
         }
@@ -381,12 +387,12 @@ impl Module {
             log::trace!("Register provider factory to '{}', name: '{}', type: '{}', export: {}", module_name, stringify!(#provider_id), stringify!(#provider_type_id), #export);
             scoped_di.register_factory(
                 #provider_type,
-                |scoped_di| {
+                |scoped_di| async move {
                     // Create provider instance
-                    let mut instance: #provider_id = <#provider_id as rnest::Provider<#provider_id>>::register(scoped_di)?;
+                    let mut instance: #provider_id = <#provider_id as rnest::Provider<#provider_id>>::register(scoped_di).await?;
 
                     // Init provider
-                    instance.__rnest_init();
+                    instance.__rnest_init().await?;
 
                     // Create di instance
                     let mut di_instance: #provider_type_id = std::sync::Arc::new(instance);
@@ -394,23 +400,17 @@ impl Module {
                     Ok(di_instance)
                 },
                 #export,
-            );
+            )?;
         }
     }
 
-    fn gen_provider_injector(&self, r#type: &String, module: &String) -> TokenStream {
+    fn gen_provider_injector(&self, r#type: &String, _module: &String) -> TokenStream {
         let provider_type = r#type;
         let provider_type_id: TokenStream = r#type.parse().unwrap();
 
         quote! {
             log::trace!("Init provider in '{}', key: '{}', type: '{}'", module_name, stringify!(#provider_type_id), #provider_type);
-            scoped_di.inject::<_, #provider_type_id>(#provider_type).expect(
-                &format!(
-                    "Cannot inject '{}' from module '{}', please check if it is defined in provider or imported from submodule",
-                    #provider_type,
-                    #module,
-                )
-            );
+            scoped_di.inject::<#provider_type_id>(#provider_type).await?;
         }
     }
 }

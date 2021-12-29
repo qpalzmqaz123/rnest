@@ -27,6 +27,6 @@ impl OpenApiSchema for UserInfo {
 }
 
 #[async_trait::async_trait]
-pub trait User {
+pub trait User: Sync + Send {
     async fn get_list(&self) -> Vec<UserInfo>;
 }
