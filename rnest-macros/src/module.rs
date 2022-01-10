@@ -295,19 +295,24 @@ impl Module {
                 log::trace!("Import module: '{}'", module_name);
 
                 // Import submodule
+                log::trace!("Import submodules of module: '{}'", module_name);
                 #(<#import_module_ids as rnest::Module>::import(di).await?;)*
 
                 // Register providers
+                log::trace!("Register providers of module: '{}'", module_name);
                 let mut scoped_di = Self::scoped_di(di);
                 #(#provider_factories;)*
 
                 // Register controllers
+                log::trace!("Register controllers of module: '{}'", module_name);
                 #(#controller_factories;)*
 
                 // Init providers
+                log::trace!("Init providers of module: '{}'", module_name);
                 #(#provider_injectors;)*
 
                 // Init controllers
+                log::trace!("Init controllers of module: '{}'", module_name);
                 #(#controller_injectors)*
 
                 // Create instance
