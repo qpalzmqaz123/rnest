@@ -67,6 +67,15 @@ impl_schema_for_boolean! {bool}
 impl_schema_for_string! {&str}
 impl_schema_for_string! {String}
 
+impl<T: OpenApiSchema> OpenApiSchema for Vec<T> {
+    fn get_schema() -> serde_json::Value {
+        crate::json!({
+            "type": "array",
+            "items": T::get_schema(),
+        })
+    }
+}
+
 pub struct OpenApiBuilder {
     version: String,
     title: String,
