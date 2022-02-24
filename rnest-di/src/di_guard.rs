@@ -25,6 +25,8 @@ impl DiGuard {
     where
         T: Clone + Send + 'static,
     {
+        log::trace!("Guard inject: '{}'", name);
+
         if self.inject_set.lock()?.contains(name) {
             return Err(Error::CircularDependency(format!(
                 "name: '{}', stack: {:?}",
@@ -32,12 +34,14 @@ impl DiGuard {
                 self.inject_stack.lock()?
             )));
         }
-
-        log::trace!("Guard inject: '{}'", name);
         self.inject_stack.lock()?.push(name.into());
         self.inject_set.lock()?.insert(name.into());
 
-        let value = self.di.internal_inject(name, self.clone()).await?;
+        let res = self.di.internal_inject(name, self.clone()).await;
+        self.inject_stack.lock()?.pop();
+        self.inject_set.lock()?.remove(name);
+
+        let value = res?;
         log::trace!("Guard inject ok: '{}'", name);
 
         Ok(value)

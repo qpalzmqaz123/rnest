@@ -76,6 +76,38 @@ async fn test_scope_02() {
 }
 
 #[tokio::test]
+async fn test_scope_03() {
+    let di = Di::new();
+
+    let di_a = di.scope("A", &["B"]);
+    di_a.register_factory(
+        "a1",
+        |di| async move {
+            let b = di.inject::<u32>("b").await?;
+            let a2 = di.inject::<u32>("a2").await?;
+            Ok(b + a2)
+        },
+        false,
+    )
+    .unwrap();
+    di_a.register_factory(
+        "a2",
+        |di| async move {
+            let b = di.inject::<u32>("b").await?;
+            Ok(b + 1)
+        },
+        false,
+    )
+    .unwrap();
+
+    let di_b = di.scope("B", &[]);
+    di_b.register_value("b", 1u32, true).unwrap();
+
+    let res = di.scope("A", &["B"]).inject::<u32>("a1").await.unwrap();
+    assert_eq!(res, 3);
+}
+
+#[tokio::test]
 async fn test_circulation() {
     let di = Di::new();
 
