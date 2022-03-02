@@ -23,7 +23,7 @@ impl SpecController {
     #[get("/")]
     fn get(&self) -> HttpResponse {
         HttpResponse::Ok()
-            .set_header("content-type", "application/json")
+            .insert_header(("content-type", "application/json"))
             .body(self.spec.clone())
     }
 
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let json_cfg = rnest::actix_web::web::JsonConfig::default().limit(1024 * 1024);
         app
             .app_data(json_cfg)
-            .wrap(rnest::actix_web::middleware::NormalizePath::default())
+            .wrap(rnest::actix_web::middleware::NormalizePath::new(rnest::actix_web::middleware::TrailingSlash::Always))
     })
     .bind("0.0.0.0:8080")?
     .run()

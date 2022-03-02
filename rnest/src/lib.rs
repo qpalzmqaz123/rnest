@@ -33,7 +33,7 @@ macro_rules! new {
         let di = std::sync::Arc::new(std::sync::Mutex::new(di));
         rnest::actix_web::HttpServer::new(move || {
             let app = rnest::actix_web::App::new();
-            let app = (|$app: rnest::actix_web::App<_, _>| $cb)(app);
+            let app = (|$app: rnest::actix_web::App<_>| $cb)(app);
             let app = app.configure(|cfg| {
                 if let Err(e) = <$main_module as rnest::Module>::configure_actix_web(
                     &mut di.clone().lock().expect("Lock di error"),

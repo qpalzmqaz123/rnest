@@ -68,7 +68,6 @@ pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // TODO: Use custom generator
     (quote::quote! {
-        use rnest::actix_web;
         #[rnest::actix_web::main#attr]
         #item
     })

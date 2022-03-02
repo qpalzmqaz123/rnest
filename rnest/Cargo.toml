@@ -1,6 +1,6 @@
 [package]
 name = "rnest"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["wangqj <qpalzmqaz123@gmail.com>"]
 edition = "2018"
 
@@ -13,10 +13,9 @@ rnest-macros = { path = "../rnest-macros" }
 
 async-trait = "0.1.42"
 log = "0.4.11"
-actix-web = { version = "3.2.0", default-features = false }
+actix-web = { version = "4.0.1", default-features = false, features = ["macros"] }
 serde_json = { version = "1.0.65", default-features = false }
 
 [dev-dependencies]
-tokio = { version = "0.2.6", default-features = false, features = ["sync", "macros"] }
 env_logger = "0.8.2"
 serde = { version = "1.0.118" }

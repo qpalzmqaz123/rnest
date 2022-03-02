@@ -159,11 +159,12 @@ impl ControllerMethodInfo {
         quote! {
             async fn #cb_token(
                 __rnest_instance: rnest::actix_web::web::Data<std::sync::Arc<#struct_token>>,
-                rnest::actix_web::web::Path((#(#router_param_name_tokens,)*)): rnest::actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
+                __rnest_path: rnest::actix_web::web::Path<(#(#router_param_type_tokens,)*)>,
                 #(#bodies,)*
                 #(#queries,)*
                 #(#raws,)*
             ) -> #out_token {
+                let (#(#router_param_name_tokens,)*) = __rnest_path.into_inner();
                 __rnest_instance.#method_token(#(#method_args_from_cb,)*)#await_token
             }
         }
@@ -412,7 +413,7 @@ impl Controller {
         quote! {
             impl rnest::Controller<Self, std::sync::Arc<Self>> for #struct_name_token {
                 fn configure_actix_web(instance: std::sync::Arc<Self>, cfg: &mut rnest::actix_web::web::ServiceConfig) {
-                    let scope = rnest::actix_web::web::scope(#scope_prefix).data(instance);
+                    let scope = rnest::actix_web::web::scope(#scope_prefix).app_data(rnest::actix_web::web::Data::new(instance));
 
                     #(#scope_calls)*
 
@@ -428,13 +429,15 @@ impl Controller {
         info: &ControllerMethodInfo,
     ) -> TokenStream {
         let struct_name_token = format_ident!("{}", struct_name);
-        let url = utils::normalize_url(&info.url);
+        let mut url = utils::normalize_url(&info.url);
         let http_method_token = format_ident!("{}", info.method);
         let cb_token = format_ident!("{}", info.actix_web_cb_name());
 
+        url.push('/');
+
         quote! {
             let scope = scope.route(
-                format!("{}/", #url).as_str(),
+                #url,
                 rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
