@@ -441,7 +441,7 @@ impl Controller {
                 rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
-            log::debug!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
+            log::trace!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
         }
     }
 
