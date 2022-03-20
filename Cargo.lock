@@ -54,16 +54,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-macros"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "465a6172cf69b960917811022d8f29bc0b7fa1398bc4f78b3c466673db1213b6"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "actix-router"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,13 +124,11 @@ checksum = "f4e5ebffd51d50df56a3ae0de0e59487340ca456f05dd0b90c0a7a6dd6a74d31"
 dependencies = [
  "actix-codec",
  "actix-http",
- "actix-macros",
  "actix-router",
  "actix-rt",
  "actix-server",
  "actix-service",
  "actix-utils",
- "actix-web-codegen",
  "ahash",
  "bytes",
  "bytestring",
@@ -163,18 +151,6 @@ dependencies = [
  "socket2",
  "time",
  "url",
-]
-
-[[package]]
-name = "actix-web-codegen"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7525bedf54704abb1d469e88d7e7e9226df73778798a69cea5022d53b2ae91bc"
-dependencies = [
- "actix-router",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -821,6 +797,7 @@ dependencies = [
  "rnest-macros",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

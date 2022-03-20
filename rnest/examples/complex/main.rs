@@ -39,7 +39,7 @@ impl SpecController {
     }
 }
 
-#[rnest::main]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(_) = std::env::var("RUST_LOG") {
         std::env::set_var("RUST_LOG", "info");

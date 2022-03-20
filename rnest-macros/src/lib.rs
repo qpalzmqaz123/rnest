@@ -60,16 +60,3 @@ pub fn controller(attr: TokenStream, item: TokenStream) -> TokenStream {
     })
     .into()
 }
-
-#[proc_macro_attribute]
-pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr: proc_macro2::TokenStream = attr.into();
-    let item: proc_macro2::TokenStream = item.into();
-
-    // TODO: Use custom generator
-    (quote::quote! {
-        #[rnest::actix_web::main#attr]
-        #item
-    })
-    .into()
-}
