@@ -10,7 +10,7 @@ pub use module::{Controller, Module, Provider};
 pub use openapi::{OpenApiBuilder, OpenApiSchema};
 pub use rnest_di::{Di, ScopedDi, ScopedDiGuard};
 pub use rnest_error::{Error, Result};
-pub use rnest_macros::{controller, Module, Provider};
+pub use rnest_macros::{controller, Module, OpenApiSchema, Provider};
 pub use serde_json::{json, Value as JsonValue};
 
 #[macro_export]

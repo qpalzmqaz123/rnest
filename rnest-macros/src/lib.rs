@@ -3,10 +3,12 @@ mod utils;
 
 mod controller;
 mod module;
+mod openapi;
 mod provider;
 
 use controller::Controller;
 use module::Module;
+use openapi::Openapi;
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use provider::Provider;
@@ -59,4 +61,14 @@ pub fn controller(attr: TokenStream, item: TokenStream) -> TokenStream {
         #openapi
     })
     .into()
+}
+
+#[proc_macro_derive(OpenApiSchema, attributes(openapi))]
+#[proc_macro_error]
+pub fn derive_openapi_schema(item: TokenStream) -> TokenStream {
+    let input: DeriveInput = parse_macro_input!(item);
+    let openapi = Openapi::parse(&input);
+    let gen = openapi.gen();
+
+    gen.into()
 }

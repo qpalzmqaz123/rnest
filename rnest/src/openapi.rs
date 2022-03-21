@@ -76,6 +76,12 @@ impl<T: OpenApiSchema> OpenApiSchema for Vec<T> {
     }
 }
 
+impl<T: OpenApiSchema> OpenApiSchema for Option<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
 pub struct OpenApiBuilder {
     version: String,
     title: String,
@@ -141,5 +147,263 @@ impl OpenApiBuilder {
                 "securitySchemes": self.security_schemes,
             },
         })
+    }
+}
+
+#[cfg(test)]
+#[allow(unused)]
+mod test {
+    use crate::{self as rnest, openapi};
+
+    use rnest::OpenApiSchema;
+
+    #[test]
+    fn test1() {
+        #[derive(Debug, OpenApiSchema)]
+        struct A {
+            #[openapi(rename = "A", description = "Field A", example = 1)]
+            a: u32,
+            #[openapi(example = "Example b", enums = ["a", "b"])]
+            b: String,
+            c: Option<f64>,
+            #[openapi(schema = rnest::json!({
+                "type": "string",
+                "example": "Example d",
+            }))]
+            d: String,
+        }
+
+        assert_eq!(
+            A::get_schema(),
+            rnest::json!({
+                "type": "object",
+                "required": ["A", "b", "d"],
+                "properties": {
+                    "A": {
+                        "type": "integer",
+                        "description": "Field A",
+                        "example": 1,
+                    },
+                    "b": {
+                        "type": "string",
+                        "example": "Example b",
+                        "enum": ["a", "b"],
+                    },
+                    "c": {
+                        "type": "number",
+                    },
+                    "d": {
+                        "type": "string",
+                        "example": "Example d",
+                    },
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn test2() {
+        #[derive(Debug, OpenApiSchema)]
+        enum A {
+            A,
+            #[openapi(rename = "b")]
+            B(u32),
+            C {
+                #[openapi(description = "aa")]
+                a: u32,
+                #[openapi(rename = "B", example = 123)]
+                b: u32,
+            },
+        }
+
+        assert_eq!(
+            A::get_schema(),
+            rnest::json!({
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "example": "A",
+                    },
+                    {
+                        "type": "object",
+                        "required": ["b"],
+                        "properties": {
+                            "b": {
+                                "type": "integer",
+                            },
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "required": ["C"],
+                        "properties": {
+                            "C": {
+                                "type": "object",
+                                "required": ["a", "B"],
+                                "properties": {
+                                    "a": {
+                                        "type": "integer",
+                                        "description": "aa",
+                                    },
+                                    "B": {
+                                        "type": "integer",
+                                        "example": 123,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn test3() {
+        #[derive(Debug, OpenApiSchema)]
+        struct B {
+            #[openapi(example = 10)]
+            b: u32,
+        }
+
+        #[derive(Debug, OpenApiSchema)]
+        #[openapi(tag = "type")]
+        enum A {
+            A,
+            #[openapi(rename = "b")]
+            B(B),
+            C {
+                a: u32,
+            },
+        }
+
+        assert_eq!(
+            A::get_schema(),
+            rnest::json!({
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": ["type"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "example": "A",
+                            },
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "required": ["b", "type"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "example": "b",
+                            },
+                            "b": {
+                                "type": "integer",
+                                "example": 10,
+                            },
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "required": ["a", "type"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "example": "C",
+                            },
+                            "a": {
+                                "type": "integer",
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+    }
+
+    #[test]
+    fn test4() {
+        #[derive(Debug, OpenApiSchema)]
+        struct A {
+            aa: u32,
+        }
+
+        #[derive(Debug, OpenApiSchema)]
+        struct B {
+            b: u32,
+            #[openapi(flatten)]
+            a: A,
+        }
+
+        assert_eq!(
+            B::get_schema(),
+            rnest::json!({
+                "type": "object",
+                "required": ["b", "aa"],
+                "properties": {
+                    "b": {
+                        "type": "integer",
+                    },
+                    "aa": {
+                        "type": "integer",
+                    },
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn test5() {
+        #[derive(Debug, OpenApiSchema)]
+        struct A {
+            aa: u32,
+        }
+
+        #[derive(Debug, OpenApiSchema)]
+        #[openapi(tag = "type")]
+        enum B {
+            M,
+            N {
+                #[openapi(flatten)]
+                a: A,
+                b: u32,
+            },
+        }
+
+        assert_eq!(
+            B::get_schema(),
+            rnest::json!({
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": ["type"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "example": "M",
+                            }
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "required": ["aa", "b", "type"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "example": "N",
+                            },
+                            "aa": {
+                                "type": "integer",
+                            },
+                            "b": {
+                                "type": "integer",
+                            },
+                        },
+                    },
+                ],
+            })
+        );
     }
 }
