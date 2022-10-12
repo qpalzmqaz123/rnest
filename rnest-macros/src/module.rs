@@ -146,9 +146,7 @@ impl Module {
                         },
                     }
                 }
-                attr @ _ => abort! { attr,
-                    "Invalid attr: {}", attr
-                },
+                _ => {}
             }
         }
 
