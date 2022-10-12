@@ -291,9 +291,11 @@ impl<'a> Openapi<'a> {
                         quote! {
                             (|| {
                                 let mut schema = <#ty as rnest::OpenApiSchema>::get_schema();
+                                #[allow(clippy::indexing_slicing)]
                                 if let Some(arr) = schema["required"].as_array_mut() {
                                     arr.push(#tag.into());
                                 }
+                                #[allow(clippy::indexing_slicing)]
                                 if let Some(obj) = schema["properties"].as_object_mut() {
                                     obj.insert(#tag.into(), rnest::json!({
                                         "type": "string",
@@ -379,6 +381,7 @@ fn gen_requireds_toks(fields: &[StructFieldInfo]) -> Vec<TokenStream> {
                     let schema = <#ty as rnest::OpenApiSchema>::get_schema();
 
                     // Append field requireds to self requireds
+                    #[allow(clippy::indexing_slicing)]
                     if let Some(arr) = schema["required"].as_array() {
                         for val in arr {
                             if let Some(req) = val.as_str() {
@@ -445,6 +448,7 @@ fn gen_properties_toks(fields: &[StructFieldInfo]) -> Vec<TokenStream> {
                         let schema = <#ty as rnest::OpenApiSchema>::get_schema();
 
                         // Append field properties to self properties
+                        #[allow(clippy::indexing_slicing)]
                         if let Some(prop) = schema["properties"].as_object() {
                             properties.extend(prop.clone());
                         }
