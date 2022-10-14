@@ -1,3 +1,8 @@
+use actix_web::{
+    web::{Json, Query},
+    HttpRequest, HttpResponse,
+};
+
 pub trait OpenApiSchema {
     fn get_schema() -> serde_json::Value;
 }
@@ -67,6 +72,18 @@ impl_schema_for_boolean! {bool}
 impl_schema_for_string! {&str}
 impl_schema_for_string! {String}
 
+impl OpenApiSchema for HttpResponse {
+    fn get_schema() -> serde_json::Value {
+        crate::json!({})
+    }
+}
+
+impl OpenApiSchema for HttpRequest {
+    fn get_schema() -> serde_json::Value {
+        crate::json!({})
+    }
+}
+
 impl<T: OpenApiSchema> OpenApiSchema for Vec<T> {
     fn get_schema() -> serde_json::Value {
         crate::json!({
@@ -77,6 +94,24 @@ impl<T: OpenApiSchema> OpenApiSchema for Vec<T> {
 }
 
 impl<T: OpenApiSchema> OpenApiSchema for Option<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Json<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Query<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema, E> OpenApiSchema for Result<T, E> {
     fn get_schema() -> serde_json::Value {
         T::get_schema()
     }

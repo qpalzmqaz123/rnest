@@ -1,29 +1,13 @@
 use rnest::OpenApiSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
-
+#[derive(Debug, Serialize, Deserialize, OpenApiSchema)]
 pub struct UserInfo {
+    #[openapi(description = "User id")]
     pub id: u32,
-    pub name: String,
-}
 
-impl OpenApiSchema for UserInfo {
-    fn get_schema() -> rnest::JsonValue {
-        rnest::json!({
-            "type": "object",
-            "properties": {
-                "id": {
-                    "description": "User id",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "User name",
-                    "type": "string"
-                }
-            }
-        })
-    }
+    #[openapi(description = "User name")]
+    pub name: String,
 }
 
 #[async_trait::async_trait]

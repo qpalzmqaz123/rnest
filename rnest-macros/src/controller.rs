@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
-use quote::{format_ident, quote};
-use syn::{Block, FnArg, ImplItem, ImplItemMethod, ItemImpl, PatType, ReturnType};
+use quote::{format_ident, quote, ToTokens};
+use syn::{Attribute, Block, Expr, FnArg, ImplItem, ImplItemMethod, ItemImpl, PatType, ReturnType};
 
 use crate::utils;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ControllerMethodArg {
     Param {
         // TODO: Add ref name
@@ -28,7 +28,16 @@ enum ControllerMethodArg {
     },
 }
 
-#[derive(Debug)]
+struct MethodOpenapiInfo {
+    bearer_auth: bool,
+    security: Option<TokenStream>,
+    tags: Option<TokenStream>,
+    summary: Option<TokenStream>,
+    parameters: Option<TokenStream>,
+    request_body: Option<TokenStream>,
+    responses: Option<TokenStream>,
+}
+
 struct ControllerMethodInfo {
     fn_name: String,
     is_async: bool,
@@ -37,7 +46,7 @@ struct ControllerMethodInfo {
     output_type: String,
     method: String, // TODO: Use enum in the future, currently it is one of ['get', 'post', 'delete', 'put']
     url: String,
-    openapi_schema: Option<String>,
+    openapi: Option<MethodOpenapiInfo>,
 }
 
 impl ControllerMethodInfo {
@@ -292,14 +301,128 @@ impl Controller {
         let url = utils::normalize_url(format!("{}/{}", scope, info.url));
         let method = &info.method;
 
-        if let Some(factory) = info.openapi_schema {
-            let factory = format_ident!("{}", factory);
+        // If openapi is enabled, generate openapi3 spec
+        if let Some(mut openapi) = info.openapi {
+            // If security is not set, set default security
+            if openapi.security.is_none() {
+                let mut toks_list = Vec::new();
+
+                if openapi.bearer_auth {
+                    toks_list.push(quote! {{
+                        "bearerAuth": []
+                    }});
+                }
+
+                openapi.security = Some(quote! {[
+                    #(#toks_list),*
+                ]});
+            }
+
+            // If parameter is not set, use default value
+            let args = info.args.clone();
+            openapi.parameters = Some(openapi.parameters.unwrap_or_else(move || {
+                let param_toks = args
+                    .iter()
+                    .filter_map(|arg| match arg {
+                        ControllerMethodArg::Query { name, ty } => {
+                            let ty_toks = ty.parse::<TokenStream>().unwrap();
+
+                            Some(quote! {{
+                                "in": "query",
+                                "name": #name,
+                                "schema": <#ty_toks>::get_schema(),
+                            }})
+                        }
+                        ControllerMethodArg::Param { name, ty } => Some({
+                            let ty_toks = ty.parse::<TokenStream>().unwrap();
+
+                            quote! {{
+                                    "in": "path",
+                                    "name": #name,
+                                    "required": true,
+                                    "schema": <#ty_toks as rnest::OpenApiSchema>::get_schema(),
+                                }
+                            }
+                        }),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+
+                quote! { rnest::json!([
+                    #(#param_toks),*
+                ])}
+            }));
+
+            // If request body is not set and #[body] exists, set auto request body
+            if let Some(first_body_type) = info
+                .args
+                .iter()
+                // .find_map(|arg| matches!(arg, ControllerMethodArg::Body { .. }))
+                .find_map(|arg| match arg {
+                    ControllerMethodArg::Body { ty, .. } => {
+                        Some(ty.parse::<TokenStream>().expect("Parse body type error"))
+                    }
+                    _ => None,
+                })
+            {
+                openapi.request_body = Some(openapi.request_body.unwrap_or(quote! {
+                    // TODO: Analyze return type
+                    rnest::json!({
+                        "content": {
+                            "application/json": {
+                                "schema": <#first_body_type as rnest::OpenApiSchema>::get_schema(),
+                            }
+                        }
+                    })
+                }));
+            }
+
+            // If response is not set, set auto response
+            let ret_ty_str = info.output_type.clone();
+            openapi.responses = Some(openapi.responses.unwrap_or_else(move || {
+                // Function return type
+                let ret_ty: TokenStream = ret_ty_str
+                    .parse()
+                    .expect("Parse controller cb return type error");
+
+                quote! {
+                    // TODO: Analyze return type
+                    rnest::json!({
+                        "200": {
+                            "description": "OK",
+                            "content": {
+                                "application/json": {
+                                    "schema": <#ret_ty as rnest::OpenApiSchema>::get_schema(),
+                                }
+                            }
+                        }
+                    })
+                }
+            }));
+
+            // Generate openapi spec rust code
+            let security = openapi.security.map(|toks| quote! { "security": #toks, });
+            let tags = openapi.tags.map(|toks| quote! { "tags": #toks, });
+            let summary = openapi.summary.map(|toks| quote! { "summary": #toks, });
+            let parameters = openapi
+                .parameters
+                .map(|toks| quote! { "parameters": #toks, });
+            let request_body = openapi
+                .request_body
+                .map(|toks| quote! { "requestBody": #toks, });
+            let responses = openapi.responses.map(|toks| quote! { "responses": #toks, });
             quote! {
                 || -> (String, rnest::JsonValue) {
                     let url = #url.to_string();
-                    let schema = Self::#factory();
                     let body = rnest::json!({
-                        #method: schema
+                        #method: {
+                            #security
+                            #tags
+                            #summary
+                            #parameters
+                            #request_body
+                            #responses
+                        }
                     });
 
                     (url, body)
@@ -313,52 +436,6 @@ impl Controller {
                 }
             }
         }
-
-        /*
-        let url = &info.url;
-        let method = &info.method;
-        let parameters: Vec<String> = info
-            .args
-            .iter()
-            .map(|v| {
-                if let ControllerMethodArg::Param { name, ty } = v {
-                    Some((name.clone(), ty.clone()))
-                } else {
-                    None
-                }
-            })
-            .filter(|v| v.is_some())
-            .map(|v| v.unwrap().0)
-            .collect();
-
-        quote! {
-            || -> (String, rnest::JsonValue) {
-                let url = #url.to_string();
-                let params = rnest::json!([
-                    #({
-                        "in": "path",
-                        "name": #parameters,
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    })*
-                ]);
-                let body = rnest::json!({
-                    #method: {
-                        "parameters": params,
-                        "responses": {
-                            "200": {
-                                "description": "ok"
-                            }
-                        }
-                    }
-                });
-
-                (url, body)
-            }
-        }
-        */
     }
 
     fn parse_self_impl(imp: &ItemImpl) -> TokenStream {
@@ -471,7 +548,7 @@ impl Controller {
         // Parse attrs
         let mut http_method: Option<String> = None;
         let mut url: Option<String> = None;
-        let mut openapi_schema: Option<String> = None;
+        let mut openapi: Option<MethodOpenapiInfo> = None;
         for attr in &method.attrs {
             let http_method_attr = attr
                 .path
@@ -491,14 +568,8 @@ impl Controller {
                         },
                     });
                 }
-                "openapi_schema" => {
-                    openapi_schema = Some(match utils::parse_ident_arg(&attr.tokens) {
-                        Ok(s) => s,
-                        Err(_) => abort! { attr.tokens,
-                            "Syntax error on controller method";
-                            note = "Syntax is #[{}(factory)]", http_method_attr;
-                        },
-                    });
+                "openapi" => {
+                    openapi = Some(Self::parse_controller_method_openapi_info(attr));
                 }
                 _ => panic!("Invalid attr: {}", quote! {attr}),
             }
@@ -569,7 +640,7 @@ impl Controller {
             output_type,
             method: http_method.expect("Method is empty"),
             url: url.expect("Url is empty"),
-            openapi_schema,
+            openapi,
         }
     }
 
@@ -614,6 +685,96 @@ impl Controller {
             _ => abort! { attr,
                 "Invalid attr"
             },
+        }
+    }
+
+    fn parse_controller_method_openapi_info(attr: &Attribute) -> MethodOpenapiInfo {
+        const PARSE_ERR_STR: &'static str = "Parse failed, syntax is #[openapi(field [= value])]";
+        const ARG_HELP: &'static str = r#"Syntax is openapi(bearer_auth | security = serde_json::josn!({}) | tags = ["tag1", "tag2", ...] | summary = "STRING" | parameters = serde_json::json!({}) | requestBody = serde_json::json!({}) | responses = serde_json::json!({})"#;
+
+        // Generate function call tokens: rorm(xxx)
+        let path = attr.path.clone();
+        let toks = attr.tokens.clone();
+        let call_toks = quote::quote! {#path #toks};
+
+        let args = if let Ok(call) = syn::parse2::<syn::ExprCall>(call_toks) {
+            call.args
+        } else {
+            abort!(attr.tokens, PARSE_ERR_STR);
+        };
+
+        let mut bearer_auth = false;
+        let mut security = None;
+        let mut tags = None;
+        let mut summary = None;
+        let mut parameters = None;
+        let mut request_body = None;
+        let mut responses = None;
+
+        // Parse args
+        for expr in &args {
+            match expr {
+                Expr::Path(p) => {
+                    let field_name = p.to_token_stream().to_string();
+                    match field_name.as_str() {
+                        // Parse bearer_auth
+                        "bearer_auth" => {
+                            bearer_auth = true;
+                        }
+
+                        // Error
+                        _ => abort!(expr, "Syntax error while decode path"; help = ARG_HELP),
+                    }
+                }
+                Expr::Assign(assign) => {
+                    let field_name = assign.left.to_token_stream().to_string();
+                    match field_name.as_str() {
+                        // Parse security = serde_json::josn!({})
+                        "security" => {
+                            security = Some(assign.right.to_token_stream());
+                        }
+
+                        // Parse tags = ["tag1", "tag2", ...]
+                        "tags" => {
+                            tags = Some(assign.right.to_token_stream());
+                        }
+
+                        // Parse summary = "STRING"
+                        "summary" => {
+                            summary = Some(assign.right.to_token_stream());
+                        }
+
+                        // Parse parameters = serde_json::json!({})
+                        "parameters" => {
+                            parameters = Some(assign.right.to_token_stream());
+                        }
+
+                        // Parse request_body = serde_json::json!({})
+                        "request_body" => {
+                            request_body = Some(assign.right.to_token_stream());
+                        }
+
+                        // Parse responses = serde_json::json!({})
+                        "responses" => {
+                            responses = Some(assign.right.to_token_stream());
+                        }
+
+                        // Error
+                        _ => abort!(expr, "Syntax error while decode assign"; help = ARG_HELP),
+                    }
+                }
+                _ => abort!(expr, "Syntax error while match expr"; help = ARG_HELP),
+            }
+        }
+
+        MethodOpenapiInfo {
+            bearer_auth,
+            security,
+            tags,
+            summary,
+            parameters,
+            request_body,
+            responses,
         }
     }
 }

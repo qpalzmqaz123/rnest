@@ -23,6 +23,7 @@ pub fn parse_string_arg(item: &TokenStream) -> Result<String, String> {
 }
 
 /// Parse token stream like (foo)
+#[allow(dead_code)]
 pub fn parse_ident_arg(item: &TokenStream) -> Result<String, String> {
     let s = (move || -> Result<String, ()> {
         let expr = syn::parse2::<syn::ExprParen>(item.clone()).map_err(|_| ())?;
