@@ -1,3 +1,5 @@
+use std::{rc::Rc, sync::Arc};
+
 use actix_web::{
     web::{Json, Query},
     HttpRequest, HttpResponse,
@@ -112,6 +114,18 @@ impl<T: OpenApiSchema> OpenApiSchema for Query<T> {
 }
 
 impl<T: OpenApiSchema, E> OpenApiSchema for Result<T, E> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Rc<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Arc<T> {
     fn get_schema() -> serde_json::Value {
         T::get_schema()
     }
