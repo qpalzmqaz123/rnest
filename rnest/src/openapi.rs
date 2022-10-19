@@ -65,6 +65,8 @@ impl_schema_for_integer! {i32}
 impl_schema_for_integer! {u32}
 impl_schema_for_integer! {i64}
 impl_schema_for_integer! {u64}
+impl_schema_for_integer! {isize}
+impl_schema_for_integer! {usize}
 
 impl_schema_for_number! {f32}
 impl_schema_for_number! {f64}
