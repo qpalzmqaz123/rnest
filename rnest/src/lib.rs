@@ -7,7 +7,7 @@ pub use actix_web::{
     HttpRequest, HttpResponse,
 };
 pub use actix_web_validator::{
-    Form as ValidatedForm, Json as ValidatedJson, Path as ValidatedPath,
+    self, Form as ValidatedForm, Json as ValidatedJson, Path as ValidatedPath,
     QsQuery as ValidatedQsQuery, Query as ValidatedQuery,
 };
 pub use module::{Controller, Module, Provider};
