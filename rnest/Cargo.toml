@@ -11,12 +11,12 @@ rnest-error = { path = "../rnest-error" }
 rnest-di = { path = "../rnest-di" }
 rnest-macros = { path = "../rnest-macros" }
 
-async-trait = "0.1.42"
-log = "0.4.11"
-actix-web = { version = "4.0.1", default-features = false }
-serde_json = { version = "1.0.65", default-features = false }
+async-trait = "0.1"
+log = "0.4"
+actix-web = { version = "4", default-features = false }
+serde_json = { version = "1", default-features = false }
 
 [dev-dependencies]
-env_logger = "0.8.2"
-serde = { version = "1.0.118" }
+env_logger = "0.9"
+serde = { version = "1" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
