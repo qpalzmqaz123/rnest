@@ -1,9 +1,11 @@
 use std::{rc::Rc, sync::Arc};
 
 use actix_web::{
-    web::{Json, Query},
+    web::{Form, Json, Path, Query},
     HttpRequest, HttpResponse,
 };
+
+use crate::{ValidatedForm, ValidatedJson, ValidatedPath, ValidatedQsQuery, ValidatedQuery};
 
 pub trait OpenApiSchema {
     fn get_schema() -> serde_json::Value;
@@ -110,6 +112,48 @@ impl<T: OpenApiSchema> OpenApiSchema for Json<T> {
 }
 
 impl<T: OpenApiSchema> OpenApiSchema for Query<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Path<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Form<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for ValidatedJson<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for ValidatedQuery<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for ValidatedPath<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for ValidatedForm<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for ValidatedQsQuery<T> {
     fn get_schema() -> serde_json::Value {
         T::get_schema()
     }

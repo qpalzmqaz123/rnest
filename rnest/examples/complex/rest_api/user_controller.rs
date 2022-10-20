@@ -1,5 +1,5 @@
 use crate::api::{User, UserInfo};
-use rnest::{controller, HttpResponse, Json, Provider};
+use rnest::{controller, HttpResponse, Json, Provider, ValidatedJson};
 use std::sync::Arc;
 
 #[derive(Provider)]
@@ -11,7 +11,7 @@ pub struct UserController {
 impl UserController {
     #[post("/")]
     #[openapi(bearer_auth, tags = ["user"], summary = "Add new user")]
-    async fn add(&self, #[body] info: Json<UserInfo>) -> HttpResponse {
+    async fn add(&self, #[body] info: ValidatedJson<UserInfo>) -> HttpResponse {
         log::info!("TODO: add user: {:?}", info.0);
         HttpResponse::Ok().finish()
     }

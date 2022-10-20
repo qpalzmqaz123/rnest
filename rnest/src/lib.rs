@@ -6,6 +6,10 @@ pub use actix_web::{
     web::{Json, Query},
     HttpRequest, HttpResponse,
 };
+pub use actix_web_validator::{
+    Form as ValidatedForm, Json as ValidatedJson, Path as ValidatedPath,
+    QsQuery as ValidatedQsQuery, Query as ValidatedQuery,
+};
 pub use module::{Controller, Module, Provider};
 pub use openapi::{OpenApiBuilder, OpenApiSchema};
 pub use rnest_di::{Di, ScopedDi, ScopedDiGuard};
