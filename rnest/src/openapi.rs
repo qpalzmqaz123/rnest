@@ -1,4 +1,8 @@
-use std::{rc::Rc, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    sync::Arc,
+};
 
 use actix_web::{
     web::{Form, Json, Path, Query},
@@ -177,6 +181,21 @@ impl<T: OpenApiSchema> OpenApiSchema for Arc<T> {
     }
 }
 
+impl<K, T: OpenApiSchema> OpenApiSchema for HashMap<K, T> {
+    fn get_schema() -> serde_json::Value {
+        crate::json!({
+            "type": "object",
+            "additionalProperties": T::get_schema(),
+        })
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for HashSet<T> {
+    fn get_schema() -> serde_json::Value {
+        <Vec<T>>::get_schema()
+    }
+}
+
 pub struct OpenApiBuilder {
     version: String,
     title: String,
@@ -248,6 +267,8 @@ impl OpenApiBuilder {
 #[cfg(test)]
 #[allow(unused)]
 mod test {
+    use std::collections::{HashMap, HashSet};
+
     use crate::{self as rnest, openapi};
 
     use rnest::OpenApiSchema;
@@ -498,6 +519,61 @@ mod test {
                         },
                     },
                 ],
+            })
+        );
+    }
+
+    #[test]
+    fn test6() {
+        #[derive(Debug, OpenApiSchema)]
+        struct A {
+            aa1: u32,
+            aa2: String,
+        }
+
+        #[derive(Debug, OpenApiSchema)]
+        struct B {
+            bb1: HashMap<u32, A>,
+            bb2: HashSet<A>,
+        }
+
+        assert_eq!(
+            B::get_schema(),
+            rnest::json!({
+                "type": "object",
+                "required": ["bb1", "bb2"],
+                "properties": {
+                    "bb1": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "required": ["aa1", "aa2"],
+                            "properties": {
+                                "aa1": {
+                                    "type": "integer",
+                                },
+                                "aa2": {
+                                    "type": "string",
+                                },
+                            },
+                        },
+                    },
+                    "bb2": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["aa1", "aa2"],
+                            "properties": {
+                                "aa1": {
+                                    "type": "integer",
+                                },
+                                "aa2": {
+                                    "type": "string",
+                                },
+                            },
+                        },
+                    },
+                },
             })
         );
     }
