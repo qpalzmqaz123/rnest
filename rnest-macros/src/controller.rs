@@ -518,7 +518,9 @@ impl Controller {
                 rnest::actix_web::web::#http_method_token().to(#struct_name_token::#cb_token),
             );
 
-            log::trace!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
+            std::env::var("RNEST_LOG_CONTROLLER").map(|var| if var == "1" {
+                log::trace!("{} {} '{}{}' registered", stringify!(#struct_name_token), stringify!(#http_method_token), #scope_prefix, #url);
+            }).ok();
         }
     }
 
