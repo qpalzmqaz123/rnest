@@ -33,7 +33,8 @@ pub fn derive_module(item: TokenStream) -> TokenStream {
     .into()
 }
 
-#[proc_macro_derive(Provider, attributes(default, on_module_init))]
+#[proc_macro_derive(Provider, attributes(default, default_fn, on_module_init))]
+#[proc_macro_error]
 pub fn derive_provider(item: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(item);
     let provider = Provider::parse(input);

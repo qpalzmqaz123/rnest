@@ -1,12 +1,20 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use proc_macro_error::abort;
+use quote::{format_ident, quote, ToTokens};
 use std::collections::HashMap;
-use syn::{Data, DeriveInput};
+use syn::{Data, DeriveInput, Expr, Pat};
+
+#[derive(Debug)]
+struct FieldDefaultFn {
+    arg_types: Vec<syn::Type>,
+    closure: syn::ExprClosure,
+}
 
 #[derive(Debug)]
 struct Field {
     r#type: String,
     default: Option<String>, // Default code
+    default_fn: Option<FieldDefaultFn>,
 }
 
 #[derive(Debug)]
@@ -89,12 +97,14 @@ impl Provider {
             let ty = &field.ty;
             let field_type = quote! {#ty}.to_string();
             let default = Self::get_default(field);
+            let default_fn = Self::get_default_fn(field);
 
             fields.insert(
                 name,
                 Field {
                     r#type: field_type,
                     default,
+                    default_fn,
                 },
             );
         }
@@ -140,6 +150,60 @@ impl Provider {
         None
     }
 
+    fn get_default_fn(field: &syn::Field) -> Option<FieldDefaultFn> {
+        for attr in &field.attrs {
+            if let Some(first) = attr.path.segments.first() {
+                match first.ident.to_string().as_str() {
+                    "default_fn" => {
+                        // Parse closure
+                        let expr = match syn::parse2::<syn::Expr>(attr.tokens.clone()) {
+                            Ok(v) => v,
+                            Err(e) => abort!(attr.tokens, "Expect expr: {}", e),
+                        };
+
+                        // Get paren
+                        let paren = match expr {
+                            Expr::Paren(v) => v,
+                            _ => abort!(expr, "Expect paren"),
+                        };
+
+                        // Get closure
+                        let closure = match paren.expr.as_ref() {
+                            Expr::Closure(v) => v,
+                            _ => abort!(paren, "Expect closure"),
+                        };
+
+                        // Get arg types
+                        let arg_types = closure
+                            .inputs
+                            .iter()
+                            .map(|pat| {
+                                // Get pat type
+                                let pat_ty = match pat {
+                                    Pat::Type(v) => v,
+                                    _ => abort!(pat, "Expect type"),
+                                };
+
+                                // Get type
+                                let ty = pat_ty.ty.as_ref().clone();
+
+                                ty
+                            })
+                            .collect::<Vec<_>>();
+
+                        return Some(FieldDefaultFn {
+                            arg_types,
+                            closure: closure.clone(),
+                        });
+                    }
+                    _ => continue,
+                }
+            }
+        }
+
+        None
+    }
+
     fn gen_field(&self, name: &String, field: &Field) -> TokenStream {
         let name_id = format_ident!("{}", name);
         let field_type = &field.r#type;
@@ -148,6 +212,22 @@ impl Provider {
             let default: TokenStream = default.parse().unwrap();
             quote! {
                 #name_id: #default
+            }
+        } else if let Some(default_fn) = &field.default_fn {
+            let closure = &default_fn.closure;
+            let args = default_fn
+                .arg_types
+                .iter()
+                .map(|arg_ty| {
+                    let inject_name = arg_ty.to_token_stream().to_string();
+                    quote! {
+                        scoped_di.inject::<#arg_ty>(#inject_name).await?
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            quote! {
+                #name_id: (#closure)(#(#args),*).await?
             }
         } else {
             quote! {

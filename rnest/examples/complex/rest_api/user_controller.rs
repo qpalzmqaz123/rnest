@@ -3,12 +3,24 @@ use rnest::{controller, HttpResponse, Json, Provider, ValidatedJson};
 use std::sync::Arc;
 
 #[derive(Provider)]
+#[on_module_init(init)]
 pub struct UserController {
     user: Arc<dyn User>,
+
+    #[default_fn(|user: Arc<dyn User>| async move {
+        rnest::Result::<usize>::Ok(user.get_list().await.len())
+    })]
+    user_count_on_startup: usize,
 }
 
 #[controller("/user")]
 impl UserController {
+    async fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
+        log::info!("user_count_on_startup: {}", self.user_count_on_startup);
+
+        Ok(())
+    }
+
     #[post("/")]
     #[openapi(bearer_auth, tags = ["user"], summary = "Add new user")]
     async fn add(&self, #[body] info: ValidatedJson<UserInfo>) -> HttpResponse {
