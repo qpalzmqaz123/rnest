@@ -8,7 +8,7 @@ pub struct UserController {
     user: Arc<dyn User>,
 
     #[default_fn(|user: Arc<dyn User>| async move {
-        rnest::Result::<usize>::Ok(user.get_list().await.len())
+        Result::<usize, String>::Ok(user.get_list().await.len())
     })]
     user_count_on_startup: usize,
 }

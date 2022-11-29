@@ -50,7 +50,7 @@ impl Provider {
         let fields: Vec<TokenStream> = self
             .fields
             .iter()
-            .map(|(name, field)| self.gen_field(name, field))
+            .map(|(name, field)| self.gen_field(&self.name, name, field))
             .collect();
         let on_module_init_expr = if let Some(func) = &self.on_module_init {
             let func = format_ident!("{}", func);
@@ -204,7 +204,7 @@ impl Provider {
         None
     }
 
-    fn gen_field(&self, name: &String, field: &Field) -> TokenStream {
+    fn gen_field(&self, provider_name: &str, name: &str, field: &Field) -> TokenStream {
         let name_id = format_ident!("{}", name);
         let field_type = &field.r#type;
 
@@ -227,7 +227,9 @@ impl Provider {
                 .collect::<Vec<_>>();
 
             quote! {
-                #name_id: (#closure)(#(#args),*).await?
+                #name_id: (#closure)(#(#args),*)
+                    .await
+                    .map_err(|e| rnest::Error::InitField(#provider_name.to_owned(), #name.to_owned(), e.to_string()))?
             }
         } else {
             quote! {

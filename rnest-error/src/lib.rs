@@ -12,6 +12,8 @@ pub enum Error {
     CircularDependency(String),
     #[error("Try to inject private provider: `{0}`")]
     InjectPrivateProvider(String),
+    #[error("Init field <{0}.{1}> error: `{2}`")]
+    InitField(String, String, String),
     #[error("User error: `{0}`")]
     User(String),
     #[error("Unknown error: `{0}`")]
