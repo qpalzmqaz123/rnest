@@ -330,7 +330,7 @@ impl Controller {
                             Some(quote! {{
                                 "in": "query",
                                 "name": #name,
-                                "schema": <#ty_toks>::get_schema(),
+                                "schema": <#ty_toks as rnest::OpenApiSchema>::get_schema(),
                             }})
                         }
                         ControllerMethodArg::Param { name, ty } => Some({
