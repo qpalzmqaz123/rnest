@@ -35,6 +35,7 @@ pub enum EnumFieldInfo<'a> {
     Unit {
         name: &'a Ident,
         rename: Option<String>,
+        description: Option<String>,
     },
 
     /// Red(u8)
@@ -42,6 +43,7 @@ pub enum EnumFieldInfo<'a> {
         name: &'a Ident,
         ty: &'a Type,
         rename: Option<String>,
+        description: Option<String>,
     },
 
     /// Color {r: u8, g: u8; b: u8}
@@ -49,6 +51,7 @@ pub enum EnumFieldInfo<'a> {
         name: &'a Ident,
         fields: Vec<StructFieldInfo<'a>>,
         rename: Option<String>,
+        description: Option<String>,
     },
 }
 
@@ -120,6 +123,7 @@ impl<'a> Openapi<'a> {
         for var in &enu.variants {
             let name = &var.ident;
             let mut rename = None;
+            let mut description = None;
 
             // Parse attr
             for attr in &var.attrs {
@@ -130,9 +134,10 @@ impl<'a> Openapi<'a> {
                 for attr_info in parse_openapi_attr(&attr) {
                     match attr_info {
                         AttrInfo::Rename(name) => rename = Some(name),
+                        AttrInfo::Desc(name) => description = Some(name),
                         _ => abort!(
                             attr,
-                            "only #[openapi(rename = \"name\")] is supported at enum key node"
+                            "only #[openapi(rename = \"name\", description = \"desc\")] is supported at enum key node"
                         ),
                     }
                 }
@@ -155,6 +160,7 @@ impl<'a> Openapi<'a> {
                         name,
                         fields: inner_fields,
                         rename,
+                        description,
                     });
                 }
                 Fields::Unnamed(unnamed_fields) => {
@@ -171,10 +177,15 @@ impl<'a> Openapi<'a> {
                         name,
                         ty: &field.ty,
                         rename,
+                        description,
                     });
                 }
                 Fields::Unit => {
-                    fields.push(EnumFieldInfo::Unit { name, rename });
+                    fields.push(EnumFieldInfo::Unit {
+                        name,
+                        rename,
+                        description,
+                    });
                 }
             }
         }
@@ -224,10 +235,12 @@ impl<'a> Openapi<'a> {
                     name,
                     fields,
                     rename,
+                    description
                 } => {
                     let name = rename.clone().unwrap_or(name.to_string());
                     let requireds_toks = gen_requireds_toks(fields);
                     let properties_toks = gen_properties_toks(fields);
+                    let description_toks = description.as_ref().map_or_else(|| quote! {}, |desc| quote! { "description": #desc, });
 
                     if let Some(tag) = &enu.tag {
                         quote! {
@@ -248,6 +261,7 @@ impl<'a> Openapi<'a> {
                                 properties.insert(#tag.into(), rnest::json!({
                                     "type": "string",
                                     "example": #name,
+                                    #description_toks
                                 }));
 
                                 rnest::json!({
@@ -272,6 +286,7 @@ impl<'a> Openapi<'a> {
                                 rnest::json!({
                                     "type": "object",
                                     "required": [#name],
+                                    #description_toks
                                     "properties": {
                                         #name: {
                                             "type": "object",
@@ -284,8 +299,9 @@ impl<'a> Openapi<'a> {
                         }
                     }
                 }
-                EnumFieldInfo::Unnamed { name, ty, rename } => {
+                EnumFieldInfo::Unnamed { name, ty, rename, description } => {
                     let name = rename.clone().unwrap_or(name.to_string());
+                    let description_toks = description.as_ref().map_or_else(|| quote! {}, |desc| quote! { "description": #desc, });
 
                     if let Some(tag) = &enu.tag {
                         quote! {
@@ -300,6 +316,7 @@ impl<'a> Openapi<'a> {
                                     obj.insert(#tag.into(), rnest::json!({
                                         "type": "string",
                                         "example": #name,
+                                        #description_toks
                                     }));
                                 }
 
@@ -311,6 +328,7 @@ impl<'a> Openapi<'a> {
                             {
                                 "type": "object",
                                 "required": [#name],
+                                #description_toks
                                 "properties": {
                                     #name: <#ty as rnest::OpenApiSchema>::get_schema(),
                                 },
@@ -318,8 +336,9 @@ impl<'a> Openapi<'a> {
                         }
                     }
                 }
-                EnumFieldInfo::Unit { name, rename } => {
+                EnumFieldInfo::Unit { name, rename, description } => {
                     let name = rename.clone().unwrap_or(name.to_string());
+                    let description_toks = description.as_ref().map_or_else(|| quote! {}, |desc| quote! { "description": #desc, });
 
                     if let Some(tag) = &enu.tag {
                         quote! {
@@ -330,6 +349,7 @@ impl<'a> Openapi<'a> {
                                     #tag: {
                                         "type": "string",
                                         "example": #name,
+                                        #description_toks
                                     }
                                 },
                             }
@@ -339,6 +359,7 @@ impl<'a> Openapi<'a> {
                             {
                                 "type": "string",
                                 "example": #name,
+                                #description_toks
                             }
                         }
                     }

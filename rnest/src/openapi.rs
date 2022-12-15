@@ -321,9 +321,11 @@ mod test {
     fn test2() {
         #[derive(Debug, OpenApiSchema)]
         enum A {
+            #[openapi(description = "desc a")]
             A,
-            #[openapi(rename = "b")]
+            #[openapi(rename = "b", description = "desc b")]
             B(u32),
+            #[openapi(description = "desc c")]
             C {
                 #[openapi(description = "aa")]
                 a: u32,
@@ -339,19 +341,22 @@ mod test {
                     {
                         "type": "string",
                         "example": "A",
+                        "description": "desc a"
                     },
                     {
                         "type": "object",
                         "required": ["b"],
+                        "description": "desc b",
                         "properties": {
                             "b": {
-                                "type": "integer",
+                                "type": "integer"
                             },
                         },
                     },
                     {
                         "type": "object",
                         "required": ["C"],
+                        "description": "desc c",
                         "properties": {
                             "C": {
                                 "type": "object",
@@ -385,12 +390,12 @@ mod test {
         #[derive(Debug, OpenApiSchema)]
         #[openapi(tag = "type")]
         enum A {
+            #[openapi(description = "desc a")]
             A,
-            #[openapi(rename = "b")]
+            #[openapi(rename = "b", description = "desc b")]
             B(B),
-            C {
-                a: u32,
-            },
+            #[openapi(description = "desc c")]
+            C { a: u32 },
         }
 
         assert_eq!(
@@ -404,6 +409,7 @@ mod test {
                             "type": {
                                 "type": "string",
                                 "example": "A",
+                                "description": "desc a",
                             },
                         },
                     },
@@ -414,6 +420,7 @@ mod test {
                             "type": {
                                 "type": "string",
                                 "example": "b",
+                                "description": "desc b",
                             },
                             "b": {
                                 "type": "integer",
@@ -428,6 +435,7 @@ mod test {
                             "type": {
                                 "type": "string",
                                 "example": "C",
+                                "description": "desc c",
                             },
                             "a": {
                                 "type": "integer",
