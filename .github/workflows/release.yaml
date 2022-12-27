@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - alpha
+      - beta
+      - rc
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Toolchain info
+        run: |
+          cargo --version
+          rustc --version
+          node -v
+          yarn -v
+
+      - name: Cargo check
+        run: |
+          cargo check
+
+      - name: Yarn install
+        run: |
+          yarn install
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(yarn semantic-release --dry-run --no-ci | grep -oP 'next release version is \K\d+\.\d+\.\d+(\-((alpha)|(beta)|(rc))\.\d+)?' | head -n 1)
+          ./.bump-version.sh $VERSION
+          yarn semantic-release

@@ -1,0 +1,22 @@
+# Release branches
+branches:
+- master
+- name: alpha
+  prerelease: true
+- name: beta
+  prerelease: true
+- name: rc
+  prerelease: true
+
+plugins:
+- "@semantic-release/commit-analyzer"
+- "@semantic-release/release-notes-generator"
+- "@semantic-release/changelog"
+- "@semantic-release/github"
+
+# Commit CHANGELOG and the file contains version field
+- - "@semantic-release/git"
+  - assets:
+    - CHANGELOG.md
+    - "**/Cargo.{toml,lock}"
+    message: "chore(release): ${nextRelease.version} [skip ci]"
