@@ -535,6 +535,7 @@ mod test {
     fn test6() {
         #[derive(Debug, OpenApiSchema)]
         struct A {
+            #[openapi(skip)]
             aa1: u32,
             aa2: String,
         }
@@ -555,11 +556,8 @@ mod test {
                         "type": "object",
                         "additionalProperties": {
                             "type": "object",
-                            "required": ["aa1", "aa2"],
+                            "required": ["aa2"],
                             "properties": {
-                                "aa1": {
-                                    "type": "integer",
-                                },
                                 "aa2": {
                                     "type": "string",
                                 },
@@ -570,11 +568,8 @@ mod test {
                         "type": "array",
                         "items": {
                             "type": "object",
-                            "required": ["aa1", "aa2"],
+                            "required": ["aa2"],
                             "properties": {
-                                "aa1": {
-                                    "type": "integer",
-                                },
                                 "aa2": {
                                     "type": "string",
                                 },

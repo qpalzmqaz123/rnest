@@ -12,6 +12,7 @@ enum AttrInfo {
     Schema(TokenStream),
     Tag(String),
     Flatten,
+    Skip,
 }
 
 pub struct StructFieldInfo<'a> {
@@ -23,6 +24,7 @@ pub struct StructFieldInfo<'a> {
     enums: Option<TokenStream>,
     schema: Option<TokenStream>,
     flatten: bool,
+    skip: bool,
 }
 
 pub struct StructInfo<'a> {
@@ -414,6 +416,10 @@ fn gen_requireds_toks(fields: &[StructFieldInfo]) -> Vec<TokenStream> {
             }
         } else {
             // Normal field
+            if field.skip {
+                continue;
+            }
+
             let name = field.rename.clone().unwrap_or(field.name.to_string());
             quote! {
                 requireds.push(#name.into());
@@ -462,7 +468,9 @@ fn gen_properties_toks(fields: &[StructFieldInfo]) -> Vec<TokenStream> {
         } else {
             // Auto generated schema
 
-            if field.flatten {
+            if field.skip {
+                continue;
+            } else if field.flatten {
                 // Flatten field
                 quote! {
                     {
@@ -509,6 +517,7 @@ fn get_field_info_from_attr<'a>(
     let mut enums = None;
     let mut schema = None;
     let mut flatten = false;
+    let mut skip = false;
 
     // Parse attr
     for attr in attrs {
@@ -527,6 +536,7 @@ fn get_field_info_from_attr<'a>(
                     abort!(attr, "`#[openapi(tag)]` is only allowed on enum header")
                 }
                 AttrInfo::Flatten => flatten = true,
+                AttrInfo::Skip => skip = true,
             }
         }
     }
@@ -540,12 +550,13 @@ fn get_field_info_from_attr<'a>(
         enums,
         schema,
         flatten,
+        skip,
     }
 }
 
 fn parse_openapi_attr(attr: &Attribute) -> Vec<AttrInfo> {
     const PARSE_ERR_STR: &'static str = "Parse failed, syntax is #[openapi(field [= value])]";
-    const ARG_HELP: &'static str = r#"Syntax is openapi(rename = "NAME" | description = "DESC" | example = (NUM | "STRING") | enums = ["STRING", ...] | schema = {} | tag = "NAME" | flatten, ...)"#;
+    const ARG_HELP: &'static str = r#"Syntax is openapi(rename = "NAME" | description = "DESC" | example = (NUM | "STRING") | enums = ["STRING", ...] | schema = {} | tag = "NAME" | flatten | skip, ...)"#;
 
     // Generate function call tokens: rorm(xxx)
     let path = attr.path.clone();
@@ -568,6 +579,9 @@ fn parse_openapi_attr(attr: &Attribute) -> Vec<AttrInfo> {
                 match field_name.as_str() {
                     // Parse flatten
                     "flatten" => attrs.push(AttrInfo::Flatten),
+
+                    // Parse skip
+                    "skip" => attrs.push(AttrInfo::Skip),
 
                     // Error
                     _ => abort!(expr, "Syntax error while decode path"; help = ARG_HELP),
