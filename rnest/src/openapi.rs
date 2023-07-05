@@ -1,7 +1,15 @@
 use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
     rc::Rc,
-    sync::Arc,
+    sync::{
+        atomic::{
+            AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16,
+            AtomicU32, AtomicU64, AtomicU8, AtomicUsize,
+        },
+        Arc,
+    },
 };
 
 use actix_web::{
@@ -71,13 +79,27 @@ impl_schema_for_integer! {i32}
 impl_schema_for_integer! {u32}
 impl_schema_for_integer! {i64}
 impl_schema_for_integer! {u64}
+impl_schema_for_integer! {i128}
+impl_schema_for_integer! {u128}
 impl_schema_for_integer! {isize}
 impl_schema_for_integer! {usize}
+
+impl_schema_for_integer! {AtomicI8}
+impl_schema_for_integer! {AtomicU8}
+impl_schema_for_integer! {AtomicI16}
+impl_schema_for_integer! {AtomicU16}
+impl_schema_for_integer! {AtomicI32}
+impl_schema_for_integer! {AtomicU32}
+impl_schema_for_integer! {AtomicI64}
+impl_schema_for_integer! {AtomicU64}
+impl_schema_for_integer! {AtomicIsize}
+impl_schema_for_integer! {AtomicUsize}
 
 impl_schema_for_number! {f32}
 impl_schema_for_number! {f64}
 
 impl_schema_for_boolean! {bool}
+impl_schema_for_boolean! {AtomicBool}
 
 impl_schema_for_string! {&str}
 impl_schema_for_string! {String}
@@ -193,6 +215,36 @@ impl<K, T: OpenApiSchema> OpenApiSchema for HashMap<K, T> {
 impl<T: OpenApiSchema> OpenApiSchema for HashSet<T> {
     fn get_schema() -> serde_json::Value {
         <Vec<T>>::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for std::sync::Mutex<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for std::sync::RwLock<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for Cell<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<T: OpenApiSchema> OpenApiSchema for RefCell<T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
+    }
+}
+
+impl<'a, T: OpenApiSchema + Clone> OpenApiSchema for Cow<'a, T> {
+    fn get_schema() -> serde_json::Value {
+        T::get_schema()
     }
 }
 
